@@ -2,7 +2,10 @@
   "name": "markdown-three-parser",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "parseMarkdown.js",
+  "exports": {
+    ".":"./parseMarkdown.js"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
