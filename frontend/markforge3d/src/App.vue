@@ -1,4 +1,5 @@
 <script setup>
+import parseMarkdown from 'markdown-three-parser'
 import { ref, computed } from 'vue'
 
 // 原始 Markdown 文本
@@ -10,17 +11,7 @@ const markdownText = ref(`# Hello Markdown
 :::three cube:::
 `)
 
-// 临时解析函数（我们后面会换成你自己写的包）
-const renderedHtml = computed(() => {
-  return markdownText.value
-    .replace(/^### (.*)$/gm, '<h3>$1</h3>')
-    .replace(/^## (.*)$/gm, '<h2>$1</h2>')
-    .replace(/^# (.*)$/gm, '<h1>$1</h1>')
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.*?)\*/g, '<em>$1</em>')
-    .replace(/\n/g, '<br />')
-    .replace(/:::three (.*?):::/g, `<div class="three-render" data-shape="$1"></div>`)
-})
+const renderedHtml = computed(() => parseMarkdown(markdownText.value))
 </script>
 
 <template>
