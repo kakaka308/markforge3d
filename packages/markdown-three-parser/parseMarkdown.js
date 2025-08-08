@@ -1,16 +1,17 @@
+import katex from 'katex'; 
+
 // 转义 HTML 特殊字符，防止 XSS 攻击
 function escapeHTML(str = '') {
   return str
-    .replace(/&/g, "&amp;")   // 替换 & 符号为 &amp;
-    .replace(/</g, "&lt;")    // 替换 < 符号为 &lt;
-    .replace(/>/g, "&gt;");   // 替换 > 符号为 &gt;
+    .replace(/&/g, "&amp;")   
+    .replace(/</g, "&lt;")    
+    .replace(/>/g, "&gt;");
 }
 
 // 保护内联 HTML 标签，防止被转义
 function protectHTML(str = '') {
   const htmlMap = {};
   let idx = 0;
-  // 用占位符替换所有 HTML 标签，保存原始标签到 htmlMap 中
   str = str.replace(/<[^>]+>/g, match => {
     const key = `@@HTML${idx}@@`;
     htmlMap[key] = match;
@@ -25,82 +26,120 @@ function restoreHTML(str = '', htmlMap = {}) {
   return str.replace(/@@HTML(\d+)@@/g, (_, i) => htmlMap[`@@HTML${i}@@`] || '');
 }
 
+// 保护内联代码，防止其内容在 HTML 转义时被破坏
+function protectCode(str = '') {
+  const codeMap = {};
+  let idx = 0;
+  str = str.replace(/`([^`\n]+)`/g, (match, codeContent) => {
+    const key = `@@CODE${idx}@@`;
+    codeMap[key] = codeContent; 
+    idx++;
+    return key;
+  });
+  return { text: str, map: codeMap };
+}
+
+// 恢复之前保护的内联代码，并进行 HTML 转义
+function restoreCode(str = '', codeMap = {}) {
+  return str.replace(/@@CODE(\d+)@@/g, (_, i) => `<code>${escapeHTML(codeMap[`@@CODE${i}@@`] || '')}</code>`);
+}
+
 // 解析属性字符串，转换为规范的 key="value" 格式
 function parseAttrs(attrStr = '') {
   const attrs = [];
-  // 匹配形如 key="value"、key='value' 或 key=value 的属性
   const regex = /(\w+)=(".*?"|'.*?'|[^\s"']+)/g;
   let match;
   while ((match = regex.exec(attrStr)) !== null) {
     const key = match[1];
     let value = match[2];
-    // 去除引号
     if ((value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))) {
+        (value.startsWith("'") && value.endsWith("'"))) {
       value = value.slice(1, -1);
     }
-    attrs.push(`${key}="${value}"`);
+    attrs.push(`${key}="${escapeHTML(value)}"`);
   }
   return attrs.join(' ');
 }
 
-// Markdown 解析主函数
-function parseMarkdown(md = '') {
-  const lines = md.split('\n');  // 按行拆分输入
-  const html = [];               // 用于存储最终 HTML 输出
-  let inCodeBlock = false;       // 标记是否处于代码块中
-  let codeLang = '';             // 代码块语言标识
-  const listStack = [];          // 用于处理嵌套列表的栈
-  let paragraphLines = [];       // 用于累积段落内多行文本
-  let inTable = false;           // 标记是否处于表格解析状态
-  let tableRows = [];            // 存储表格所有行
-  const footnotes = {};          // 存储脚注内容，key为脚注编号
+// 使用 KaTeX 渲染数学表达式，errorFallback: 出错时返回内容
+function renderMath(tex, displayMode = false) {
+  try {
+    return katex.renderToString(tex, { throwOnError: false, displayMode });
+  } catch (e) {
+    // 出错时显示原始文本，避免崩溃
+    return `<code class="katex-error">${escapeHTML(tex)}</code>`;
+  }
+}
 
-  // 处理并输出段落内容
+// Markdown 解析主函数，集成 KaTeX 公式解析
+function parseMarkdown(md = '') {
+  const lines = md.split('\n');
+  const html = [];
+  let inCodeBlock = false;
+  let codeLang = '';
+  const listStack = [];
+  let paragraphLines = [];
+  let inTable = false;
+  let tableRows = [];
+  const footnotes = {};
+  const inlineFootnotes = {};
+
+  // 用于检测并渲染块级公式
+  let inMathBlock = false;
+  let mathBlockLines = [];
+
+  // 处理并输出段落内容。
   const flushParagraph = () => {
     if (paragraphLines.length > 0) {
       let text = paragraphLines.join(' ');
 
-      // 保护内联 HTML，防止被转义
-      const { text: protectedText, map: htmlMap } = protectHTML(text);
-      text = escapeHTML(protectedText);
+      // 处理内联数学公式 $...$
+      // 先保护 HTML 和代码
+      let { text: protectedHtmlText, map: htmlMap } = protectHTML(text);
+      let { text: protectedCodeText, map: codeMap } = protectCode(protectedHtmlText);
 
-      // 先提取并替换行内代码，避免被后续替换影响
-      const codeMatches = [];
-      text = text.replace(/`([^`\n]+)`/g, (_, code) => {
-        codeMatches.push(code);
-        return `@@CODE${codeMatches.length - 1}@@`;
+      let processedText = escapeHTML(protectedCodeText);
+
+      // 处理内联脚注 `[^key](content)`
+      processedText = processedText.replace(/\[\^(.+?)\]\((.+?)\)/g, (_, key, content) => {
+        const footnoteKey = key.trim() || `inline-footnote-${Object.keys(inlineFootnotes).length + 1}`;
+        inlineFootnotes[footnoteKey] = escapeHTML(content);
+        return `<sup id="ref-${footnoteKey}"><a href="#footnote-${footnoteKey}">${footnoteKey}</a></sup>`;
       });
 
-      // 处理图片，支持可选属性
-      text = text
+      // 处理图片
+      processedText = processedText
         .replace(/!\[([^\]]*)\]\(([^)]+)\)(?:\{([^}]*)\})?/g, (_, alt, src, attrStr) => {
           const extra = attrStr ? ' ' + parseAttrs(attrStr) : '';
-          return `<img alt="${alt}" src="${src}"${extra} />`;
+          return `<img alt="${escapeHTML(alt)}" src="${escapeHTML(src)}"${extra} />`;
         })
-        // 处理链接，带 target="_blank"
-        .replace(/\[([^\]]+?)\]\(([^)]+)\)/g, (_, text, url) => `<a href="${url}" target="_blank">${text}</a>`)
-        // 斜体和加粗
-        .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></em></strong>')
+        // 处理链接
+        .replace(/\[([^\]]+?)\]\(([^)]+)\)/g, (_, linkText, url) => `<a href="${escapeHTML(url)}" target="_blank">${escapeHTML(linkText)}</a>`)
+        // 加粗斜体
+        .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
+        // 加粗
         .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        // 斜体
         .replace(/\*(.+?)\*/g, '<em>$1</em>')
         // 删除线
         .replace(/~~(.+?)~~/g, '<del>$1</del>')
         // 脚注引用
         .replace(/\[\^(.+?)\]/g, (_, key) => `<sup id="ref-${key}"><a href="#footnote-${key}">${key}</a></sup>`);
 
-      // 恢复之前替换的代码
-      text = text.replace(/@@CODE(\d+)@@/g, (_, idx) => `<code>${codeMatches[idx]}</code>`);
+      // 处理内联数学公式：匹配 $...$，避免匹配 $$...$$
+      processedText = processedText.replace(/(?<!\$)\$(?!\$)(.+?)(?<!\$)\$(?!\$)/g, (_, expr) => {
+        return renderMath(expr, false);
+      });
 
-      // 恢复之前保护的 HTML 标签
-      text = restoreHTML(text, htmlMap);
+      processedText = restoreCode(processedText, codeMap);
+      processedText = restoreHTML(processedText, htmlMap);
 
-      html.push(`<p>${text}</p>`); // 输出段落标签
-      paragraphLines = [];         // 清空缓存
+      html.push(`<p>${processedText}</p>`);
+      paragraphLines = [];
     }
   };
 
-  // 关闭所有列表标签
+  // 关闭所有未闭合的列表标签。
   const flushList = () => {
     while (listStack.length > 0) {
       const { tag } = listStack.pop();
@@ -108,24 +147,22 @@ function parseMarkdown(md = '') {
     }
   };
 
-  // 处理列表项，支持有序/无序和任务列表
+  // 处理列表项
   const handleListItem = (line) => {
     const match = line.match(/^(\s*)([-*]|\d+\.)\s+(.*)/);
     if (!match) return false;
     const indent = match[1].length;
     const marker = match[2];
     const content = match[3];
-    const level = Math.floor(indent / 2);  // 每两个空格一个层级
+    const level = Math.floor(indent / 2);
     const isOrdered = /^\d+\./.test(marker);
     const currentTag = isOrdered ? 'ol' : 'ul';
 
-    // 根据缩进调整列表嵌套层级，关闭多余列表标签
     while (listStack.length > level + 1) {
       const { tag } = listStack.pop();
       html.push(`</${tag}>`);
     }
 
-    // 新增或切换列表类型
     if (listStack.length === 0 || level >= listStack.length) {
       if (listStack.length > 0 && listStack[listStack.length - 1].tag !== currentTag) {
         const { tag } = listStack.pop();
@@ -142,182 +179,228 @@ function parseMarkdown(md = '') {
       html.push(`<${currentTag}>`);
     }
 
-    // 保护 HTML，避免内容被转义
-    const { text: protectedText, map: htmlMap } = protectHTML(content);
+    const { text: protectedHtmlText, map: htmlMap } = protectHTML(content);
+    const { text: protectedCodeText, map: codeMap } = protectCode(protectedHtmlText);
 
-    // 处理任务列表项 [ ] 或 [x]
-    const taskMatch = protectedText.match(/^\[( |x|X)\]\s+(.*)/);
+    // 处理任务列表项
+    const taskMatch = protectedCodeText.match(/^\[( |x|X)\]\s+(.*)/);
     if (taskMatch) {
       const checked = taskMatch[1].toLowerCase() === 'x';
-      const text = restoreHTML(escapeHTML(taskMatch[2]), htmlMap);
+      const text = restoreHTML(restoreCode(escapeHTML(taskMatch[2]), codeMap), htmlMap);
       html.push(`<li><input type="checkbox" ${checked ? 'checked' : ''} disabled> ${text}</li>`);
     } else {
-      html.push(`<li>${restoreHTML(escapeHTML(protectedText), htmlMap)}</li>`);
+      html.push(`<li>${restoreHTML(restoreCode(escapeHTML(protectedCodeText), codeMap), htmlMap)}</li>`);
     }
     return true;
   };
 
-  // 逐行解析 Markdown
-  for (const line of lines) {
-    const trimmedLine = line.trim();
+  // 表格单元格内联 Markdown 解析（部分内联样式）
+  function inlineParse(text) {
+    const { text: protectedHtmlText, map: htmlMap } = protectHTML(text);
+    const { text: protectedCodeText, map: codeMap } = protectCode(protectedHtmlText);
 
-    // 代码块内部处理
-    if (inCodeBlock) {
-      if (trimmedLine === '```') {
+    let result = escapeHTML(protectedCodeText);
+
+    result = result
+      .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      .replace(/~~(.+?)~~/g, '<del>$1</del>');
+
+    result = restoreCode(result, codeMap);
+    result = restoreHTML(result, htmlMap);
+    return result;
+  }
+
+  // 解析并生成表格 HTML
+  function parseTable() {
+    if (tableRows.length < 2) {
+      tableRows = [];
+      return;
+    }
+    // 解析表头和对齐方式
+    const headers = tableRows[0].split('|').map(s => s.trim());
+    const aligns = tableRows[1].split('|').map(s => s.trim());
+
+    // 解析对齐类型
+    const alignTypes = aligns.map(a => {
+      if (/^:-+:$/.test(a)) return 'center';
+      if (/^-+:$/.test(a)) return 'right';
+      if (/^:-+$/.test(a)) return 'left';
+      return null;
+    });
+
+    html.push('<table><thead><tr>');
+    headers.forEach((h, i) => {
+      const alignAttr = alignTypes[i] ? ` style="text-align:${alignTypes[i]}"` : '';
+      html.push(`<th${alignAttr}>${inlineParse(h)}</th>`);
+    });
+    html.push('</tr></thead><tbody>');
+
+    for (let i = 2; i < tableRows.length; i++) {
+      const cols = tableRows[i].split('|').map(s => s.trim());
+      html.push('<tr>');
+      cols.forEach((c, i) => {
+        const alignAttr = alignTypes[i] ? ` style="text-align:${alignTypes[i]}"` : '';
+        html.push(`<td${alignAttr}>${inlineParse(c)}</td>`);
+      });
+      html.push('</tr>');
+    }
+    html.push('</tbody></table>');
+    tableRows = [];
+  }
+
+  // 主循环解析每行
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i];
+    const trimmed = line.trim();
+
+    // 处理代码块开始/结束
+    if (/^```/.test(trimmed)) {
+      if (inCodeBlock) {
+        // 结束代码块
+        html.push(`</code></pre>`);
         inCodeBlock = false;
-        html.push('</code></pre>');
+        codeLang = '';
       } else {
-        html.push(escapeHTML(line));
+        // 新代码块
+        flushParagraph();
+        flushList();
+        if (inTable) {
+          parseTable();
+          inTable = false;
+        }
+        inCodeBlock = true;
+        codeLang = trimmed.slice(3).trim();
+        html.push(`<pre><code class="language-${escapeHTML(codeLang)}">`);
       }
       continue;
     }
 
-    // 段落结束，输出之前缓存的段落内容
-    flushParagraph();
-
-    // 代码块开始标记 ``` 或 ```lang
-    const codeBlockStart = line.match(/^```(\w*)/);
-    if (codeBlockStart) {
-      inCodeBlock = true;
-      codeLang = codeBlockStart[1] || 'plaintext';
-      html.push(`<pre><code class="language-${codeLang}">`);
+    if (inCodeBlock) {
+      // 代码块内容直接转义输出
+      html.push(escapeHTML(line));
       continue;
     }
 
-    // 脚注定义 [^key]: 内容
-    const footnoteDef = line.match(/^\[\^(.+?)\]:\s+(.+)/);
-    if (footnoteDef) {
-      const [, key, content] = footnoteDef;
-      footnotes[key] = escapeHTML(content);
-      continue;
-    }
-
-    // 分割线 ---
-    if (/^---$/.test(trimmedLine)) {
-      html.push('<hr/>');
-      continue;
-    }
-
-    // 标题 #, ##, ### ...
-    if (/^#+ /.test(line)) {
-      const headingMatch = line.match(/^(#+)\s+(.*)/);
-      if (headingMatch) {
-        const level = headingMatch[1].length;
-        const content = headingMatch[2];
-        const { text: protectedText, map: htmlMap } = protectHTML(content);
-        html.push(`<h${level}>${restoreHTML(escapeHTML(protectedText), htmlMap)}</h${level}>`);
-        continue;
+    // 处理块级数学公式
+    if (trimmed === '$$') {
+      flushParagraph();
+      flushList();
+      if (inMathBlock) {
+        // 结束块级公式
+        const mathContent = mathBlockLines.join('\n');
+        html.push(renderMath(mathContent, true));
+        inMathBlock = false;
+        mathBlockLines = [];
+      } else {
+        // 开始块级公式
+        inMathBlock = true;
+        mathBlockLines = [];
       }
-    }
-
-    // 引用块 >
-    if (/^> /.test(line)) {
-      const { text: protectedText, map: htmlMap } = protectHTML(line.slice(2));
-      html.push(`<blockquote>${restoreHTML(escapeHTML(protectedText), htmlMap)}</blockquote>`);
       continue;
     }
 
-    // 自定义三维渲染标签 :::three shape:::
-    const threeMatch = line.match(/^:::three\s+(.+?):::/);
-    if (threeMatch) {
-      html.push(`<div class="three-render" data-shape="${threeMatch[1]}"></div>`);
+    if (inMathBlock) {
+      mathBlockLines.push(line);
+      continue;
+    }
+
+    // 空行表示段落结束
+    if (trimmed === '') {
+      flushParagraph();
+      flushList();
+      if (inTable) {
+        parseTable();
+        inTable = false;
+      }
+      continue;
+    }
+
+    // 处理表格行（最简单的判断，包含至少一个 |）
+    if (trimmed.includes('|')) {
+      flushParagraph();
+      flushList();
+      if (!inTable) {
+        inTable = true;
+        tableRows = [];
+      }
+      tableRows.push(trimmed);
+      continue;
+    } else if (inTable) {
+      // 不在表格的行，说明表格结束
+      parseTable();
+      inTable = false;
+    }
+
+    // 处理标题，支持 #，##，...，##### 五级
+    const headingMatch = trimmed.match(/^(#{1,5})\s+(.*)/);
+    if (headingMatch) {
+      flushParagraph();
+      flushList();
+      if (inTable) {
+        parseTable();
+        inTable = false;
+      }
+      const level = headingMatch[1].length;
+      let content = headingMatch[2];
+
+      // 保护 HTML 和代码
+      let { text: protectedHtmlText, map: htmlMap } = protectHTML(content);
+      let { text: protectedCodeText, map: codeMap } = protectCode(protectedHtmlText);
+
+      let processedContent = escapeHTML(protectedCodeText);
+
+      // 处理内联脚注、图片、链接等（省略，参考flushParagraph）
+
+      // 处理内联数学公式
+      processedContent = processedContent.replace(/(?<!\$)\$(?!\$)(.+?)(?<!\$)\$(?!\$)/g, (_, expr) => renderMath(expr, false));
+
+      processedContent = restoreCode(processedContent, codeMap);
+      processedContent = restoreHTML(processedContent, htmlMap);
+
+      html.push(`<h${level}>${processedContent}</h${level}>`);
       continue;
     }
 
     // 处理列表项
     if (handleListItem(line)) {
+      flushParagraph();
       continue;
     }
 
-    // 空行，结束列表和表格
-    if (trimmedLine === '') {
-      flushList();
-      if (inTable) {
-        parseTable();
-        inTable = false;
-        tableRows = [];
-      }
-      continue;
-    }
-
-    // 表格行检测，行以 | 开头并包含 | 分割
-    if (/^\|.*\|$/.test(line)) {
-      if (!inTable) {
-        inTable = true;
-      }
-      tableRows.push(line);
-      continue;
-    }
-
-    // 表格结束，处理已缓存的表格行
-    if (inTable && !/^\|.*\|$/.test(line)) {
-      parseTable();
-      inTable = false;
-      tableRows = [];
-    }
-
-    // 非特殊行，缓存为段落内容
+    // 普通行，累积到段落
     paragraphLines.push(line);
   }
 
-  // 循环结束后，输出剩余内容
+  // 结尾处理
   flushParagraph();
   flushList();
-  if (inTable) {
-    parseTable();
+  if (inTable) parseTable();
+  if (inMathBlock) {
+    // 没有关闭的数学块
+    html.push(renderMath(mathBlockLines.join('\n'), true));
   }
 
-  // 解析表格函数
-  function parseTable() {
-    if (tableRows.length < 2) return; // 至少要有表头和对齐行
+  // 处理脚注内容
+  const footnoteKeys = Object.keys(footnotes);
+  const inlineFootnoteKeys = Object.keys(inlineFootnotes);
+  if (footnoteKeys.length > 0 || inlineFootnoteKeys.length > 0) {
+    html.push('<hr><section class="footnotes"><ol>');
 
-    const header = tableRows[0];
-    const alignRow = tableRows[1];
-    const bodyRows = tableRows.slice(2);
-
-    // 分割表头单元格，去除两边空白
-    const headerCells = header.split('|').slice(1, -1).map(s => s.trim());
-    const alignCells = alignRow.split('|').slice(1, -1).map(s => s.trim());
-
-    // 判断每列对齐方式
-    const alignments = alignCells.map(cell => {
-      if (/^:\s*-+:\s*$/.test(cell)) return 'center';
-      if (/^:\s*-+\s*$/.test(cell)) return 'left';
-      if (/^\s*-+:\s*$/.test(cell)) return 'right';
-      return null;
-    });
-
-    // 输出表头
-    html.push('<table><thead><tr>' + headerCells.map((c, i) => {
-      const align = alignments[i] ? ` align="${alignments[i]}"` : '';
-      const { text: protectedText, map: htmlMap } = protectHTML(c);
-      return `<th${align}>${restoreHTML(escapeHTML(protectedText), htmlMap)}</th>`;
-    }).join('') + '</tr></thead><tbody>');
-
-    // 输出表格内容行
-    for (const row of bodyRows) {
-      const cells = row.split('|').slice(1, -1).map(s => s.trim());
-      html.push('<tr>' + cells.map((c, i) => {
-        const align = alignments[i] ? ` align="${alignments[i]}"` : '';
-        const { text: protectedText, map: htmlMap } = protectHTML(c);
-        return `<td${align}>${restoreHTML(escapeHTML(protectedText), htmlMap)}</td>`;
-      }).join('') + '</tr>');
+    for (const key of footnoteKeys) {
+      html.push(`<li id="footnote-${key}">${footnotes[key]}</li>`);
     }
-    html.push('</tbody></table>');
-  }
-
-  // 输出脚注部分
-  if (Object.keys(footnotes).length > 0) {
-    html.push('<hr/><section class="footnotes"><ol>');
-    for (const [key, content] of Object.entries(footnotes)) {
-      html.push(`<li id="footnote-${key}">${content} <a href="#ref-${key}">↩</a></li>`);
+    for (const key of inlineFootnoteKeys) {
+      html.push(`<li id="footnote-${key}">${inlineFootnotes[key]}</li>`);
     }
     html.push('</ol></section>');
   }
 
-  // 返回最终的 HTML 字符串
   return html.join('\n');
 }
+
+export default parseMarkdown;
 
 
 // 示例
@@ -328,16 +411,16 @@ const md = `
 
 [百度](https://www.baidu.com)
 
+\`\`\`javascript
+console.log("Hello World");
 \`\`\`
-console.log("Hello World")
-\`\`\`
 
+这是一个内联脚注[^内联示例](这是内联脚注的内容，可以包含 **加粗** 和 \`代码\`。).
 
-| 名称   | 数量 | 价格 |
-| :----- | ---: | :--: |
-| 苹果   |  3   | 2.5  |
-| 香蕉   |  5   | 1.2  |
-
+| 项目 | 状态 | 详情 |
+| :--- | :---: | ---: |
+| 任务一 | **完成** | \`task-id\` |
+| 任务二 | *进行中* | [链接](https://example.com) |
 
 :::three
 {
@@ -348,7 +431,7 @@ console.log("Hello World")
 :::
 
 这是一个脚注[^1]
-[^1]: 这是脚注内容。
+[^1]: 这是常规脚注内容。
 
 - 一级
   - 二级
@@ -363,7 +446,6 @@ console.log("Hello World")
 2. [x] 散步
 
 ![示例图片](image.png){width=200 height=100 alt="自定义alt" class="rounded shadow"}
-
 
 `;
 
