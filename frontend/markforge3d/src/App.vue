@@ -15,13 +15,17 @@ const renderedHtml = computed(() => parseMarkdown(markdownText.value))
 </script>
 
 <template>
-  <el-container style="height: 100vh">
+  <div class="container">
     <!-- 顶部导航栏 -->
-    <el-header style="background: #409EFF; color: white; font-size: 20px">
-      MarkForge 3D 编辑器
-    </el-header>
+     <header class="header">
+      <div class="headertitle">MarkForge 3D 编辑器</div>
+     </header>
 
     <!-- 主体内容 -->
+     <div class="main">
+      <div class="left"></div>
+      <div class="right"></div>
+     </div>
     <el-main>
       <el-row :gutter="20" style="height: 100%">
         <!-- 左侧输入 -->
@@ -56,8 +60,35 @@ const renderedHtml = computed(() => parseMarkdown(markdownText.value))
     <el-footer style="text-align: center; padding: 5px; font-size: 12px">
       MarkForge 3D © 2025
     </el-footer>
-  </el-container>
+  </div>
 </template>
 
+<style>
+body {
+  font-size: 20px; /* 基础字体大小 */
+  background-color: #f9f2f1;
+}
 
+/* 让 Element Plus 组件也变大 */
+.el-input__inner,
+.el-card__header,
+.preview,
+.el-header,
+.el-footer {
+  font-size: 16px !important;
+}
+.container {
+  height: 100vh;
+}
+.header  {
+  background:linear-gradient(to right, #fdc1b7, #f5e9e6); 
+  height: 60px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  .headertitle {
+    margin: 10px;
+  }
+}
+</style>
 
