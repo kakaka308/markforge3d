@@ -10,33 +10,36 @@ function parseMarkdown(md = '') {
   const html = [];
   let inCodeBlock = false;
   let codeLang = '';
-  let inList = false;
-  let listType = ''; // 'ul' or 'ol'
+  // 使用一个栈来跟踪列表的层级和类型，每个元素是一个对象 { tag: 'ul'/'ol', indent: number }
+  const listStack = [];
   let paragraphLines = [];
   let inTable = false;
-  let tableHeaderParsed = false;
   let tableRows = [];
   const footnotes = {};
 
-  //将收集到的段落行转换为 HTML
+  // 将收集到的段落行转换为 HTML
   const flushParagraph = () => {
     if (paragraphLines.length > 0) {
       let text = paragraphLines.join(' ');
       text = escapeHTML(text);
       const codeMatches = [];
+      // 临时替换内联代码，避免内部的特殊字符被后续的正则替换
       text = text.replace(/`([^`\n]+)`/g, (_, code) => {
         codeMatches.push(code);
         return `@@CODE${codeMatches.length - 1}@@`;
       });
 
+      // 处理其他内联元素
       text = text
         .replace(/!\[([^\]]+)\]\(([^)]+)\)/g, (_, alt, src) => `<img alt="${alt}" src="${src}" />`)
         .replace(/\[([^\]]+?)\]\(([^)]+)\)/g, (_, text, url) => `<a href="${url}" target="_blank">${text}</a>`)
         .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
         .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
         .replace(/\*(.+?)\*/g, '<em>$1</em>')
-        .replace(/~~(.+?)~~/g, '<del>$1</del>');
+        .replace(/~~(.+?)~~/g, '<del>$1</del>')
+        .replace(/\[\^(.+?)\]/g, (_, key) => `<sup id="ref-${key}"><a href="#footnote-${key}">${key}</a></sup>`);
 
+      // 还原内联代码
       text = text.replace(/@@CODE(\d+)@@/g, (_, idx) => `<code>${codeMatches[idx]}</code>`);
 
       html.push(`<p>${text}</p>`);
@@ -44,32 +47,89 @@ function parseMarkdown(md = '') {
     }
   };
 
+  // 关闭所有未闭合的列表标签
+  const flushList = () => {
+    while (listStack.length > 0) {
+      const { tag } = listStack.pop();
+      html.push(`</${tag}>`);
+    }
+  };
 
-  // 遍历每一行 Markdown 文本
-  for (let line of lines) {
-    // 移除行尾的空白字符
-    line = line.replace(/\s+$/, '');
+  // 处理列表项
+  const handleListItem = (line) => {
+    // 匹配列表项的缩进、标记和内容
+    const match = line.match(/^(\s*)([-*]|\d+\.)\s+(.*)/);
+    if (!match) return false;
 
-    //  --- 代码块 --- 
-    const codeBlockStart = line.match(/^```(\w*)/);
-    if (codeBlockStart) {
-      flushParagraph();
-      if (!inCodeBlock) {
-        inCodeBlock = true;
-        codeLang = codeBlockStart[1] || '';
-        html.push(`<pre><code class="language-${codeLang}">`);
-      } else {
+    const indent = match[1].length;
+    const marker = match[2];
+    const content = match[3];
+
+    // 每 2 个空格算一个列表层级
+    const level = Math.floor(indent / 2);
+    const isOrdered = /^\d+\./.test(marker);
+    const currentTag = isOrdered ? 'ol' : 'ul';
+
+    // 如果当前层级小于栈顶层级，关闭多余的列表
+    while (listStack.length > level + 1) {
+      const { tag } = listStack.pop();
+      html.push(`</${tag}>`);
+    }
+
+    // 如果当前层级大于栈顶层级，或者栈为空，需要开启新的列表
+    if (listStack.length === 0 || level >= listStack.length) {
+      // 检查当前列表类型是否与栈顶类型相同
+      if (listStack.length > 0 && listStack[listStack.length - 1].tag !== currentTag) {
+        // 如果类型不同，先关闭上一层列表
+        const { tag } = listStack.pop();
+        html.push(`</${tag}>`);
+      }
+      // 开启新的列表
+      listStack.push({ tag: currentTag, indent: indent });
+      html.push(`<${currentTag}>`);
+    }
+
+    // 如果当前层级与栈顶层级相同，但类型不同，需要关闭并开启新的列表
+    if (listStack.length > 0 && listStack[listStack.length - 1].tag !== currentTag) {
+      const { tag } = listStack.pop();
+      html.push(`</${tag}>`);
+      listStack.push({ tag: currentTag, indent: indent });
+      html.push(`<${currentTag}>`);
+    }
+
+    // 添加列表项
+    html.push(`<li>${escapeHTML(content)}</li>`);
+    return true;
+  };
+
+  // --- 主循环：遍历每一行 Markdown 文本 ---
+  for (const line of lines) {
+    const trimmedLine = line.trim();
+
+    // 如果在代码块中，直接添加内容并转义
+    if (inCodeBlock) {
+      if (trimmedLine === '```') {
         inCodeBlock = false;
         html.push('</code></pre>');
+      } else {
+        html.push(escapeHTML(line));
       }
       continue;
     }
 
-    if (inCodeBlock) {
-      html.push(escapeHTML(line));
+    // --- 块级元素解析 ---
+    flushParagraph(); // 遇到新的块级元素，先处理之前的段落
+
+    // 代码块开始
+    const codeBlockStart = line.match(/^```(\w*)/);
+    if (codeBlockStart) {
+      inCodeBlock = true;
+      codeLang = codeBlockStart[1] || 'plaintext';
+      html.push(`<pre><code class="language-${codeLang}">`);
       continue;
     }
-     // --- 脚注定义 ---
+
+    // 脚注定义
     const footnoteDef = line.match(/^\[\^(.+?)\]:\s+(.+)/);
     if (footnoteDef) {
       const [, key, content] = footnoteDef;
@@ -77,136 +137,96 @@ function parseMarkdown(md = '') {
       continue;
     }
 
-    //  --- 水平线 --- 
-    if (/^---$/.test(line)) {
-      flushParagraph();
+    // 水平线
+    if (/^---$/.test(trimmedLine)) {
       html.push('<hr/>');
       continue;
     }
 
-    //  --- 标题 --- 
-    if (/^###### /.test(line)) { flushParagraph(); html.push(`<h6>${line.slice(7)}</h6>`); continue; }
-    if (/^##### /.test(line)) { flushParagraph(); html.push(`<h5>${line.slice(6)}</h5>`); continue; }
-    if (/^#### /.test(line)) { flushParagraph(); html.push(`<h4>${line.slice(5)}</h4>`); continue; }
-    if (/^### /.test(line)) { flushParagraph(); html.push(`<h3>${line.slice(4)}</h3>`); continue; }
-    if (/^## /.test(line)) { flushParagraph(); html.push(`<h2>${line.slice(3)}</h2>`); continue; }
-    if (/^# /.test(line)) { flushParagraph(); html.push(`<h1>${line.slice(2)}</h1>`); continue; }
+    // 标题
+    if (/^#+ /.test(line)) {
+      const headingMatch = line.match(/^(#+)\s+(.*)/);
+      if (headingMatch) {
+        const level = headingMatch[1].length;
+        const content = headingMatch[2];
+        html.push(`<h${level}>${escapeHTML(content)}</h${level}>`);
+        continue;
+      }
+    }
 
-    //  --- 引用 --- 
+    // 引用
     if (/^> /.test(line)) {
-      flushParagraph();
       html.push(`<blockquote>${escapeHTML(line.slice(2))}</blockquote>`);
       continue;
     }
 
-    //  --- Three.js扩展 --- 
+    // Three.js扩展
     const threeMatch = line.match(/^:::three\s+(.+?):::/);
     if (threeMatch) {
-      flushParagraph();
       html.push(`<div class="three-render" data-shape="${threeMatch[1]}"></div>`);
       continue;
     }
 
-    //  --- 有序列表 --- 
-    if (/^\d+\.\s/.test(line)) {
-      flushParagraph();
-      const content = line.replace(/^\d+\.\s/, '');
-      if (!inList) {
-        html.push('<ol>');
-        inList = true;
-        listType = 'ol';
-      }
-      html.push(`<li>${escapeHTML(content)}</li>`);
+    // 列表
+    if (handleListItem(line)) {
       continue;
     }
 
-    //  --- 无序列表 --- 
-    if (/^\s*[-*] /.test(line)) {
-      flushParagraph();
-      const content = line.replace(/^\s*[-*] /, '');
-      if (!inList) {
-        html.push('<ul>');
-        inList = true;
-        listType = 'ul';
-      }
-      html.push(`<li>${escapeHTML(content)}</li>`);
-      continue;
-    }
-
-    //  --- 空行：关闭列表和段落 --- 
-    if (/^\s*$/.test(line)) {
-      flushParagraph();
-      if (inList) {
-        html.push(listType === 'ul' ? '</ul>' : '</ol>');
-        inList = false;
-        listType = '';
-      }
-      continue;
-    }
-
-    //  --- 表格 --- 
-    if (/^\|(.+)\|$/.test(line)) {
-      if (!inTable) {
-        flushParagraph();
-        inTable = true;
-        tableHeaderParsed = false;
+    // 空行：结束列表、表格和段落
+    if (trimmedLine === '') {
+      flushList();
+      if (inTable) {
+        // 如果遇到空行，且在表格中，解析并关闭表格
+        parseTable();
+        inTable = false;
         tableRows = [];
+      }
+      continue;
+    }
+
+    // 表格
+    if (/^\|.*\|$/.test(line)) {
+      if (!inTable) {
+        inTable = true;
       }
       tableRows.push(line);
       continue;
     }
 
-    // --- 非表格行，结束表格 --- 
-    if (inTable && !/^\|(.+)\|$/.test(line)) {
-      // 解析表格
-      const header = tableRows[0];
-      const separator = tableRows[1];
-      const bodyRows = tableRows.slice(2);
-      // 处理表头
-      const headerCells = header.split('|').slice(1, -1).map(s => s.trim());
-      html.push('<table>');
-      html.push('<thead><tr>' + headerCells.map(c => `<th>${escapeHTML(c)}</th>`).join('') + '</tr></thead>');
-      html.push('<tbody>');
-      // 处理表格主体
-      for (const row of bodyRows) {
-        const cells = row.split('|').slice(1, -1).map(s => s.trim());
-        html.push('<tr>' + cells.map(c => `<td>${escapeHTML(c)}</td>`).join('') + '</tr>');
-      }
-      html.push('</tbody></table>');
-
+    // 如果是表格的中间行，但格式不正确，则结束表格
+    if (inTable && !/^\|.*\|$/.test(line)) {
+      parseTable();
       inTable = false;
-      tableHeaderParsed = false;
       tableRows = [];
-      // 回到本行继续处理
     }
 
-    //  --- 普通行：段落 --- 
+    // 普通行：收集到段落中
     paragraphLines.push(line);
   }
 
-  // 循环结束后关闭段落或列表或表格
+  // --- 循环结束后的收尾工作 ---
   flushParagraph();
+  flushList();
   if (inTable) {
-    // 最后一段是表格，立即解析
+    parseTable();
+  }
+
+  // 解析表格的辅助函数
+  function parseTable() {
+    if (tableRows.length < 2) return;
     const header = tableRows[0];
-    const separator = tableRows[1];
     const bodyRows = tableRows.slice(2);
+    // 处理表头
     const headerCells = header.split('|').slice(1, -1).map(s => s.trim());
-    html.push('<table>');
-    html.push('<thead><tr>' + headerCells.map(c => `<th>${escapeHTML(c)}</th>`).join('') + '</tr></thead>');
-    html.push('<tbody>');
+    html.push('<table><thead><tr>' + headerCells.map(c => `<th>${escapeHTML(c)}</th>`).join('') + '</tr></thead><tbody>');
+    // 处理表格主体
     for (const row of bodyRows) {
       const cells = row.split('|').slice(1, -1).map(s => s.trim());
       html.push('<tr>' + cells.map(c => `<td>${escapeHTML(c)}</td>`).join('') + '</tr>');
     }
     html.push('</tbody></table>');
+  }
 
-    inTable = false;
-    tableRows = [];
-  }
-  if (inList) {
-    html.push(listType === 'ul' ? '</ul>' : '</ol>');
-  }
   // 添加脚注部分
   if (Object.keys(footnotes).length > 0) {
     html.push('<hr/><section class="footnotes"><ol>');
@@ -215,9 +235,9 @@ function parseMarkdown(md = '') {
     }
     html.push('</ol></section>');
   }
+
   return html.join('\n');
 }
-
 
 // 示例
 const md = `
@@ -252,6 +272,14 @@ console.log("Hello World")
 
 这是一个脚注[^1]
 [^1]: 这是脚注内容。
+
+- 一级
+  - 二级
+    - 三级
+- 同级
+1. 有序一
+    1. 子项一
+    2. 子项二
 `;
 
 const htmlOutput = parseMarkdown(md);
