@@ -23,72 +23,143 @@ const renderedHtml = computed(() => parseMarkdown(markdownText.value))
 
     <!-- 主体内容 -->
      <div class="main">
-      <div class="left"></div>
-      <div class="right"></div>
-     </div>
-    <el-main>
-      <el-row :gutter="20" style="height: 100%">
-        <!-- 左侧输入 -->
-        <el-col :span="12" style="height: 100%">
-          <el-card shadow="never" style="height: 100%">
-            <template #header>Markdown 输入</template>
-            <el-input
-              type="textarea"
-              v-model="markdownText"
-              :rows="25"
-              placeholder="输入 Markdown..."
-              style="height: 100%"
-            />
-          </el-card>
-        </el-col>
-
-        <!-- 右侧渲染 -->
-        <el-col :span="12" style="height: 100%">
-          <el-card shadow="never" style="height: 100%">
-            <template #header>HTML 预览</template>
-            <div
-              class="preview"
-              v-html="renderedHtml"
-              style="height: 100%; overflow-y: auto"
-            ></div>
-          </el-card>
-        </el-col>
-      </el-row>
-    </el-main>
+      <!-- 左侧输入 -->
+      <div class="left">
+        <div class="card">
+          <div class="part-title">Markdown 输入</div>
+          <div class="part-textarea">
+            <textarea v-model="markdownText"></textarea>
+          </div>
+        </div>
+      </div>
+       <!-- 右侧渲染 -->
+      <div class="right">
+        <div class="card">
+          <div class="part-title">HTML 预览</div>
+          <div class="part-preview">
+            <div class="box" v-html="renderedHtml"></div>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- 底部 -->
-    <el-footer style="text-align: center; padding: 5px; font-size: 12px">
-      MarkForge 3D © 2025
-    </el-footer>
+    <div class="footer">MarkForge 3D © 2025</div>
   </div>
 </template>
 
-<style>
+<style lang="scss">
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
 body {
-  font-size: 20px; /* 基础字体大小 */
+  font-size: 20px;
   background-color: #f9f2f1;
+  height: 100vh;
+  margin: 0;
+  overflow: hidden; /* 防止整个页面滚动 */
 }
 
-/* 让 Element Plus 组件也变大 */
-.el-input__inner,
-.el-card__header,
-.preview,
-.el-header,
-.el-footer {
-  font-size: 16px !important;
-}
 .container {
   height: 100vh;
-}
-.header  {
-  background:linear-gradient(to right, #fdc1b7, #f5e9e6); 
-  height: 60px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  .headertitle {
-    margin: 10px;
+
+  .header {
+    background: linear-gradient(to right, #fdc1b7, #f5e9e6);
+    height: 60px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    .headertitle {
+      color: white;
+      font-weight: bold;
+      margin: 0 10px;
+    }
+  }
+
+  .main {
+    display: flex;
+    flex: 1;
+    min-height: 0; /* 关键：允许内部元素缩小 */
+    overflow: hidden; /* 防止滚动条出现在这里 */
+    
+    .left,
+    .right {
+      flex: 1;
+      padding: 20px;
+      min-width: 0; /* 防止 flex 元素溢出 */
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .card {
+      flex: 1;
+      min-height: 0; /* 关键：允许内部元素缩小 */
+      margin: 10px;
+      border: 1px solid gray;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      background-color: white;
+      display: flex;
+      flex-direction: column;
+      
+      .part-title {
+        background: linear-gradient(to right, #FAE1DD, #F8EDEB);
+        padding: 10px;
+        border-bottom: 1px solid gray;
+        font-weight: bold;
+        flex-shrink: 0;
+      }
+      
+      .part-textarea {
+        flex: 1;
+        min-height: 0;
+        padding: 10px;
+        display: flex;
+        
+        textarea {
+          width: 100%;
+          flex: 1;
+          resize: none;
+          border: 1px solid gray;
+          border-radius: 4px;
+          padding: 10px;
+          font-family: inherit;
+          font-size: 19px;
+          overflow: auto; /* 内容多时显示滚动条 */
+        }
+      }
+      
+      .part-preview {
+        flex: 1;
+        min-height: 0;
+        padding: 10px;
+        display: flex;
+        
+        .box {
+          width: 100%;
+          flex: 1;
+          border: 1px solid gray;
+          border-radius: 4px;
+          padding: 10px;
+          font-size: 19px;
+          overflow: auto; /* 内容多时显示滚动条 */
+        }
+      }
+    }
+  }
+
+  .footer {
+    background: linear-gradient(to right, #D8E2DC, #FFE5D9);
+    color: black;
+    text-align: center;
+    padding: 10px;
+    font-size: 14px;
+    flex-shrink: 0;
   }
 }
 </style>
-
