@@ -8,8 +8,26 @@ const markdownText = ref(`# Hello Markdown
 **这是粗体**
 *这是斜体*
 
-:::three cube:::
-[] 哈哈
+这是一段内容，
+然后是第二行，但不是一个新段落。
+
+这是一个无序列表：
+* 第一项
+   * 嵌套项
+* 第二项
+
+这是一个有序列表：
+1. 第一项
+    1. 嵌套有序列表
+    2. 第二项
+2. 第二项
+
+这是表格：
+| 标题1 | 标题2 | 标题3 |
+| :---- | :---: | ----: |
+| 左对齐 | 居中 | 右对齐 |
+| 内容1 | 内容2 | 内容3 |
+
 `)
 
 const renderedHtml = computed(() => parseMarkdown(markdownText.value))
@@ -18,12 +36,12 @@ const renderedHtml = computed(() => parseMarkdown(markdownText.value))
 <template>
   <div class="container">
     <!-- 顶部导航栏 -->
-     <header class="header">
+      <header class="header">
       <div class="headertitle">MarkForge 3D 编辑器</div>
-     </header>
+      </header>
 
     <!-- 主体内容 -->
-     <div class="main">
+      <div class="main">
       <!-- 左侧输入 -->
       <div class="left">
         <div class="card">
@@ -33,7 +51,7 @@ const renderedHtml = computed(() => parseMarkdown(markdownText.value))
           </div>
         </div>
       </div>
-       <!-- 右侧渲染 -->
+        <!-- 右侧渲染 -->
       <div class="right">
         <div class="card">
           <div class="part-title">HTML 预览</div>
@@ -162,5 +180,25 @@ body {
     font-size: 14px;
     flex-shrink: 0;
   }
+}
+
+/* 添加表格样式以解决没有边框的问题 */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+}
+
+th, td {
+  border: 1px solid #ccc;
+  padding: 8px;
+}
+
+th {
+  background-color: #f2f2f2;
+}
+
+ul, ol {
+  padding-left: 20px;
 }
 </style>
