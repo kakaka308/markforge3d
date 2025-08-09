@@ -1,164 +1,189 @@
-import B from "katex";
-function a(r = "") {
-  return r.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+import F from "katex";
+function p(o = "") {
+  return o.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
-function O(r = "") {
-  const e = {};
-  let n = 0;
-  return r = r.replace(/<[^>]+>/g, (o) => {
-    const s = `@@HTML${n}@@`;
-    return e[s] = o, n++, s;
-  }), { text: r, map: e };
+function v(o = "") {
+  const t = {};
+  let e = 0;
+  return o = o.replace(/<[^>]+>/g, (r) => {
+    const s = `@@HTML${e}@@`;
+    return t[s] = r, e++, s;
+  }), { text: o, map: t };
 }
-function H(r = "", e = {}) {
-  return r.replace(/@@HTML(\d+)@@/g, (n, o) => e[`@@HTML${o}@@`] || "");
+function E(o = "", t = {}) {
+  return o.replace(/@@HTML(\d+)@@/g, (e, r) => t[`@@HTML${r}@@`] || "");
 }
-function E(r = "") {
-  const e = {};
-  let n = 0;
-  return r = r.replace(/`([^`\n]+)`/g, (o, s) => {
-    const t = `@@CODE${n}@@`;
-    return e[t] = s, n++, t;
-  }), { text: r, map: e };
+function A(o = "") {
+  const t = {};
+  let e = 0;
+  return o = o.replace(/`([^`\n]+)`/g, (r, s) => {
+    const n = `@@CODE${e}@@`;
+    return t[n] = s, e++, n;
+  }), { text: o, map: t };
 }
-function _(r = "", e = {}) {
-  return r.replace(/@@CODE(\d+)@@/g, (n, o) => `<code>${a(e[`@@CODE${o}@@`] || "")}</code>`);
+function D(o = "", t = {}) {
+  return o.replace(/@@CODE(\d+)@@/g, (e, r) => `<code>${p(t[`@@CODE${r}@@`] || "")}</code>`);
 }
-function D(r = "") {
-  const e = [], n = /(\w+)=(".*?"|'.*?'|[^\s"']+)/g;
-  let o;
-  for (; (o = n.exec(r)) !== null; ) {
-    const s = o[1];
-    let t = o[2];
-    (t.startsWith('"') && t.endsWith('"') || t.startsWith("'") && t.endsWith("'")) && (t = t.slice(1, -1)), e.push(`${s}="${a(t)}"`);
+function P(o = "") {
+  const t = [], e = /(\w+)=(".*?"|'.*?'|[^\s"']+)/g;
+  let r;
+  for (; (r = e.exec(o)) !== null; ) {
+    const s = r[1];
+    let n = r[2];
+    (n.startsWith('"') && n.endsWith('"') || n.startsWith("'") && n.endsWith("'")) && (n = n.slice(1, -1)), t.push(`${s}="${p(n)}"`);
   }
-  return e.join(" ");
+  return t.join(" ");
 }
-function j(r, e = !1) {
+function W(o, t = !1) {
   try {
-    return B.renderToString(r, { throwOnError: !1, displayMode: e });
+    return F.renderToString(o, { throwOnError: !1, displayMode: t });
   } catch {
-    return `<code class="katex-error">${a(r)}</code>`;
+    return `<code class="katex-error">${p(o)}</code>`;
   }
 }
-function k(r, e, n) {
-  const o = r.match(/^(\s*)([-*]|\d+\.)\s+(.*)/);
-  if (!o) return !1;
-  const s = o[1].length, t = o[2], h = o[3], c = Math.floor(s / 2), i = /^\d+\./.test(t) ? "ol" : "ul";
-  for (; e.length > c + 1; ) {
-    const { tag: l } = e.pop();
-    n.push(`</${l}>`);
+function I(o, t, e) {
+  const r = o.match(/^(\s*)([-*]|\d+\.)\s+(.*)/);
+  if (!r) return !1;
+  const s = r[1].length, n = r[2], h = r[3], c = Math.floor(s / 2), u = /^\d+\./.test(n) ? "ol" : "ul";
+  for (; t.length > c + 1; ) {
+    const { tag: d } = t.pop();
+    e.push(`</${d}>`);
   }
-  if (e.length === 0 || c >= e.length) {
-    if (e.length > 0 && e[e.length - 1].tag !== i) {
-      const { tag: l } = e.pop();
-      n.push(`</${l}>`);
+  if (t.length === 0 || c >= t.length) {
+    if (t.length > 0 && t[t.length - 1].tag !== u) {
+      const { tag: d } = t.pop();
+      e.push(`</${d}>`);
     }
-    e.push({ tag: i, indent: s }), n.push(`<${i}>`);
+    t.push({ tag: u, indent: s }), e.push(`<${u}>`);
   }
-  if (e.length > 0 && e[e.length - 1].tag !== i) {
-    const { tag: l } = e.pop();
-    n.push(`</${l}>`), e.push({ tag: i, indent: s }), n.push(`<${i}>`);
+  if (t.length > 0 && t[t.length - 1].tag !== u) {
+    const { tag: d } = t.pop();
+    e.push(`</${d}>`), t.push({ tag: u, indent: s }), e.push(`<${u}>`);
   }
-  const { text: M, map: T } = O(h), { text: $, map: m } = E(M), g = $.match(/^\[( |x|X)\]\s+(.*)/);
-  if (g) {
-    const l = g[1].toLowerCase() === "x", u = H(_(a(g[2]), m), T);
-    n.push(`<li><input type="checkbox" ${l ? "checked" : ""} disabled> ${u}</li>`);
+  const { text: H, map: x } = v(h), { text: M, map: g } = A(H), b = M.match(/^\[( |x|X)\]\s+(.*)/);
+  if (b) {
+    const d = b[1].toLowerCase() === "x", a = E(D(p(b[2]), g), x);
+    e.push(`<li><input type="checkbox" ${d ? "checked" : ""} disabled> ${a}</li>`);
   } else
-    n.push(`<li>${H(_(a($), m), T)}</li>`);
+    e.push(`<li>${E(D(p(M), g), x)}</li>`);
   return !0;
 }
-function w(r) {
-  const { text: e, map: n } = O(r), { text: o, map: s } = E(e);
-  let t = a(o);
-  return t = t.replace(/\*\*\*(.+?)\*\*\*/g, "<strong><em>$1</em></strong>").replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\*(.+?)\*/g, "<em>$1</em>").replace(/~~(.+?)~~/g, "<del>$1</del>"), t = _(t, s), t = H(t, n), t;
-}
-function C(r, e) {
-  if (r.length < 2) return;
-  const n = r[0].split("|").map((t) => t.trim()), s = r[1].split("|").map((t) => t.trim()).map((t) => /^:-+:$/.test(t) ? "center" : /^-+:$/.test(t) ? "right" : /^:-+$/.test(t) ? "left" : null);
-  e.push("<table><thead><tr>"), n.forEach((t, h) => {
-    const c = s[h] ? ` style="text-align:${s[h]}"` : "";
-    e.push(`<th${c}>${w(t)}</th>`);
-  }), e.push("</tr></thead><tbody>");
-  for (let t = 2; t < r.length; t++) {
-    const h = r[t].split("|").map((c) => c.trim());
-    e.push("<tr>"), h.forEach((c, p) => {
-      const i = s[p] ? ` style="text-align:${s[p]}"` : "";
-      e.push(`<td${i}>${w(c)}</td>`);
-    }), e.push("</tr>");
+function O(o, t) {
+  for (; o.length > 0; ) {
+    const { tag: e } = o.pop();
+    t.push(`</${e}>`);
   }
-  e.push("</tbody></table>");
 }
-function P(r = "") {
-  const e = r.split(`
-`), n = [];
-  let o = !1, s = "";
-  const t = [];
-  let h = [], c = !1, p = [], i = !1, M = [];
-  const T = {}, $ = () => {
+function K(o) {
+  const { text: t, map: e } = v(o), { text: r, map: s } = A(t);
+  let n = p(r);
+  return n = n.replace(/\*\*\*(.+?)\*\*\*/g, "<strong><em>$1</em></strong>").replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\*(.+?)\*/g, "<em>$1</em>").replace(/~~(.+?)~~/g, "<del>$1</del>"), n = D(n, s), n = E(n, e), n;
+}
+function k(o, t) {
+  if (o.length < 2) {
+    o.length = 0;
+    return;
+  }
+  const e = o[0].split("|").map((n) => n.trim()), s = o[1].split("|").map((n) => n.trim()).map((n) => /^:-+:$/.test(n) ? "center" : /^-+:$/.test(n) ? "right" : /^:-+$/.test(n) ? "left" : null);
+  t.push("<table><thead><tr>"), e.forEach((n, h) => {
+    const c = s[h] ? ` style="text-align:${s[h]}"` : "";
+    t.push(`<th${c}>${K(n)}</th>`);
+  }), t.push("</tr></thead><tbody>");
+  for (let n = 2; n < o.length; n++) {
+    const h = o[n].split("|").map((c) => c.trim());
+    t.push("<tr>"), h.forEach((c, f) => {
+      const u = s[f] ? ` style="text-align:${s[f]}"` : "";
+      t.push(`<td${u}>${K(c)}</td>`);
+    }), t.push("</tr>");
+  }
+  t.push("</tbody></table>"), o.length = 0;
+}
+function z(o = "") {
+  const t = o.split(`
+`), e = [];
+  let r = !1, s = "";
+  const n = [];
+  let h = [], c = !1, f = [];
+  const u = {}, H = {};
+  let x = !1, M = [];
+  const g = () => {
     if (h.length > 0) {
-      let g = h.join(" "), { text: l, map: u } = O(g), { text: b, map: W } = E(l), f = a(b);
-      f = f.replace(/\[\^(.+?)\]\((.+?)\)/g, (y, d, L) => {
-        const x = d.trim() || `inline-footnote-${Object.keys(T).length + 1}`;
-        return T[x] = a(L), `<sup id="ref-${x}"><a href="#footnote-${x}">${x}</a></sup>`;
-      }), f = f.replace(/!\[([^\]]*)\]\(([^)]+)\)(?:\{([^}]*)\})?/g, (y, d, L, x) => {
-        const A = x ? " " + D(x) : "";
-        return `<img alt="${a(d)}" src="${a(L)}"${A} />`;
-      }).replace(/\[([^\]]+?)\]\(([^)]+)\)/g, (y, d, L) => `<a href="${a(L)}" target="_blank">${a(d)}</a>`).replace(/\*\*\*(.+?)\*\*\*/g, "<strong><em>$1</em></strong>").replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\*(.+?)\*/g, "<em>$1</em>").replace(/~~(.+?)~~/g, "<del>$1</del>").replace(/\[\^(.+?)\]/g, (y, d) => `<sup id="ref-${d}"><a href="#footnote-${d}">${d}</a></sup>`), f = f.replace(new RegExp("(?<!\\$)\\$(?!\\$)(.+?)(?<!\\$)\\$(?!\\$)", "g"), (y, d) => j(d, !1)), f = _(f, W), f = H(f, u), n.push(`<p>${f}</p>`), h = [];
-    }
-  }, m = () => {
-    for (; t.length > 0; ) {
-      const { tag: g } = t.pop();
-      n.push(`</${g}>`);
+      let a = h.join("<br />"), { text: y, map: $ } = v(a), { text: _, map: j } = A(y), l = p(_);
+      l = l.replace(/\[\^(.+?)\]\((.+?)\)/g, (T, i, C) => {
+        const m = i.trim() || `inline-footnote-${Object.keys(H).length + 1}`;
+        return H[m] = p(C), `<sup id="ref-${m}"><a href="#footnote-${m}">${m}</a></sup>`;
+      }), l = l.replace(/!\[([^\]]*)\]\(([^)]+)\)(?:\{([^}]*)\})?/g, (T, i, C, m) => {
+        const B = m ? " " + P(m) : "";
+        return `<img alt="${p(i)}" src="${p(C)}"${B} />`;
+      }).replace(/\[([^\]]+?)\]\(([^)]+)\)/g, (T, i, C) => `<a href="${p(C)}" target="_blank">${p(i)}</a>`).replace(/\*\*\*(.+?)\*\*\*/g, "<strong><em>$1</em></strong>").replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\*(.+?)\*/g, "<em>$1</em>").replace(/~~(.+?)~~/g, "<del>$1</del>").replace(/\[\^(.+?)\]/g, (T, i) => `<sup id="ref-${i}"><a href="#footnote-${i}">${i}</a></sup>`), l = l.replace(new RegExp("(?<!\\$)\\$(?!\\$)(.+?)(?<!\\$)\\$(?!\\$)", "g"), (T, i) => W(i, !1)), l = D(l, j), l = E(l, $), e.push(`<p>${l}</p>`), h = [];
     }
   };
-  for (let g = 0; g < e.length; g++) {
-    let l = e[g];
-    const u = l.trim();
-    if (/^```/.test(u)) {
-      o ? (n.push("</code></pre>"), o = !1, s = "") : ($(), m(), c && (C(p, n), c = !1, p = []), o = !0, s = u.slice(3).trim(), n.push(`<pre><code class="language-${a(s)}">`));
+  for (let a = 0; a < t.length; a++) {
+    let y = t[a];
+    const $ = y.trim();
+    if (/^```/.test($)) {
+      r ? (e.push("</code></pre>"), r = !1, s = "") : (g(), O(n, e), c && (k(f, e), c = !1), r = !0, s = $.slice(3).trim(), e.push(`<pre><code class="language-${p(s)}">`));
       continue;
     }
-    if (o) {
-      n.push(a(l));
+    if (r) {
+      e.push(p(y));
       continue;
     }
-    if (u === "$$") {
-      if (i) {
-        const b = M.join(`
+    if ($ === "$$") {
+      if (g(), O(n, e), x) {
+        const l = M.join(`
 `);
-        n.push(j(b, !0)), M = [], i = !1;
+        e.push(W(l, !0)), x = !1, M = [];
       } else
-        $(), m(), i = !0;
+        x = !0, M = [];
       continue;
     }
-    if (i) {
-      M.push(l);
+    if (x) {
+      M.push(y);
       continue;
     }
-    if (k(l, t, n)) {
-      $(), c && (C(p, n), c = !1, p = []);
+    if ($ === "") {
+      g(), O(n, e), c && (k(f, e), c = !1), e.push("<br />");
       continue;
     }
-    if (/^\|.*\|$/.test(u)) {
-      c || ($(), m(), c = !0), p.push(u);
+    const _ = $.match(/^\[\^(.+?)\]:\s*(.*)/);
+    if (_) {
+      const l = _[1].trim(), T = _[2];
+      u[l] = T;
       continue;
     }
-    if (c)
-      if (/^\|.*\|$/.test(u)) {
-        p.push(u);
-        continue;
-      } else
-        C(p, n), c = !1, p = [];
-    if (u === "") {
-      $(), m();
+    if ($.includes("|")) {
+      g(), O(n, e), c || (c = !0, f = []), f.push($);
+      continue;
+    } else c && (k(f, e), c = !1);
+    const j = $.match(/^(#{1,5})\s+(.*)/);
+    if (j) {
+      g(), O(n, e), c && (k(f, e), c = !1);
+      const l = j[1].length;
+      let T = j[2], { text: i, map: C } = v(T), { text: m, map: B } = A(i), L = p(m);
+      L = L.replace(new RegExp("(?<!\\$)\\$(?!\\$)(.+?)(?<!\\$)\\$(?!\\$)", "g"), (X, w) => W(w, !1)), L = D(L, B), L = E(L, C), e.push(`<h${l}>${L}</h${l}>`);
       continue;
     }
-    h.push(l);
+    if (I(y, n, e)) {
+      g();
+      continue;
+    }
+    h.push(y);
   }
-  return $(), m(), c && C(p, n), n.join(`
+  g(), O(n, e), c && k(f, e), x && e.push(W(M.join(`
+`), !0));
+  const b = Object.keys(u), d = Object.keys(H);
+  if (b.length > 0 || d.length > 0) {
+    e.push('<hr><section class="footnotes"><ol>');
+    for (const a of b)
+      e.push(`<li id="footnote-${a}">${u[a]}</li>`);
+    for (const a of d)
+      e.push(`<li id="footnote-${a}">${H[a]}</li>`);
+    e.push("</ol></section>");
+  }
+  return e.join(`
 `);
 }
 export {
-  P as default
+  z as default
 };

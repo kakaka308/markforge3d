@@ -10,11 +10,12 @@
   },
   "dependencies": {
     "element-plus": "^2.10.5",
-    "vue": "^3.5.17",
-    "markdown-three-parser": "workspace:*"
+    "markdown-three-parser": "workspace:*",
+    "vue": "^3.5.17"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.0",
+    "sass": "^1.90.0",
     "vite": "^7.0.4"
   }
 }

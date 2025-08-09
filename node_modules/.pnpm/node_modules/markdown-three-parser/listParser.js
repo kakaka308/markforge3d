@@ -1,5 +1,7 @@
-import { protectHTML, protectCode, restoreHTML, restoreCode, escapeHTML } from './utils.js';
+// listParser.js
+import { escapeHTML, protectHTML, restoreHTML, protectCode, restoreCode } from './utils';
 
+// 处理列表项
 export function handleListItem(line, listStack, html) {
   const match = line.match(/^(\s*)([-*]|\d+\.)\s+(.*)/);
   if (!match) return false;
@@ -34,6 +36,7 @@ export function handleListItem(line, listStack, html) {
   const { text: protectedHtmlText, map: htmlMap } = protectHTML(content);
   const { text: protectedCodeText, map: codeMap } = protectCode(protectedHtmlText);
 
+  // 处理任务列表项
   const taskMatch = protectedCodeText.match(/^\[( |x|X)\]\s+(.*)/);
   if (taskMatch) {
     const checked = taskMatch[1].toLowerCase() === 'x';
@@ -43,4 +46,12 @@ export function handleListItem(line, listStack, html) {
     html.push(`<li>${restoreHTML(restoreCode(escapeHTML(protectedCodeText), codeMap), htmlMap)}</li>`);
   }
   return true;
+}
+
+// 关闭所有未闭合的列表标签。
+export function flushList(listStack, html) {
+  while (listStack.length > 0) {
+    const { tag } = listStack.pop();
+    html.push(`</${tag}>`);
+  }
 }

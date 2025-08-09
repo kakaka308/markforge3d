@@ -9,6 +9,7 @@ const markdownText = ref(`# Hello Markdown
 *这是斜体*
 
 :::three cube:::
+[] 哈哈
 `)
 
 const renderedHtml = computed(() => parseMarkdown(markdownText.value))
