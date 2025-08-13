@@ -1,216 +1,440 @@
 <script setup>
 import parseMarkdown from 'markdown-three-parser'
-import { ref, computed } from 'vue'
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
+import Swiper from 'swiper/bundle'
+import 'swiper/css/bundle'
 
-// 原始 Markdown 文本
-const markdownText = ref(`# Hello Markdown
+const STORAGE_KEY = 'my_markdown_draft'
+const markdownText = ref(localStorage.getItem(STORAGE_KEY) || `# Hello Markdown\n\n`)
 
-**这是粗体**
-*这是斜体*
-
-这是一段内容，
-然后是第二行，但不是一个新段落。
-
-这是一个无序列表：
-* 第一项
-   * 嵌套项
-* 第二项
-
-这是一个有序列表：
-1. 第一项
-    1. 嵌套有序列表
-    2. 第二项
-2. 第二项
-
-这是表格：
-| 标题1 | 标题2 | 标题3 |
-| :---- | :---: | ----: |
-| 左对齐 | 居中 | 右对齐 |
-| 内容1 | 内容2 | 内容3 |
-
-\`\`\`javascript
-// 代码高亮示例
-function hello() {
-  console.log('Hello Prism.js!');
-  return <div>JSX 也会被高亮</div>;
-}
-\`\`\`
-
-\`内联代码也会高亮\`
-
-`)
+watch(markdownText, (newVal) => {
+  localStorage.setItem(STORAGE_KEY, newVal)
+})
 
 const renderedHtml = computed(() => parseMarkdown(markdownText.value))
+
+const textareaRef = ref(null)
+
+function insertMarkdown(template, cursorStart = null, cursorEnd = null) {
+  const textarea = textareaRef.value
+  if (!textarea) return
+
+  const start = textarea.selectionStart
+  const end = textarea.selectionEnd
+
+  markdownText.value =
+    markdownText.value.substring(0, start) +
+    template +
+    markdownText.value.substring(end)
+
+  nextTick(() => {
+    const posStart = start + (cursorStart ?? template.length)
+    const posEnd = start + (cursorEnd ?? template.length)
+    textarea.focus()
+    textarea.setSelectionRange(posStart, posEnd)
+  })
+}
+
+// Swiper 初始化
+const menuButtonRef = ref(null)
+const swiperInstance = ref(null)
+
+onMounted(() => {
+  console.log('草稿已从 localStorage 恢复')
+
+  const menuButton = menuButtonRef.value
+  let openMenu = () => {
+    if (swiperInstance.value) {
+      swiperInstance.value.slidePrev()
+    }
+  }
+
+  swiperInstance.value = new Swiper('.swiper-container', {
+    slidesPerView: 'auto',
+    initialSlide: 1, // 初始显示内容幻灯片
+    resistanceRatio: 0,
+    slideToClickedSlide: true,
+    on: {
+      slideChangeTransitionStart: function () {
+        const slider = this
+        if (slider.activeIndex === 0) {
+          menuButton.classList.add('cross')
+          menuButton.removeEventListener('click', openMenu)
+        } else {
+          menuButton.classList.remove('cross')
+        }
+      },
+      slideChangeTransitionEnd: function () {
+        const slider = this
+        if (slider.activeIndex === 1) {
+          menuButton.addEventListener('click', openMenu)
+        }
+      },
+    },
+  })
+  
+  // 初始状态添加监听器
+  if (swiperInstance.value.activeIndex === 1) {
+    menuButton.addEventListener('click', openMenu)
+  }
+})
 </script>
 
 <template>
-  <div class="container">
-    <!-- 顶部导航栏 -->
-      <header class="header">
-      <div class="headertitle">MarkForge 3D 编辑器</div>
-      </header>
-
-    <!-- 主体内容 -->
-      <div class="main">
-      <!-- 左侧输入 -->
-      <div class="left">
-        <div class="card">
-          <div class="part-title">Markdown 输入</div>
-          <div class="part-textarea">
-            <textarea v-model="markdownText"></textarea>
-          </div>
+  <div class="swiper-container">
+    <div class="swiper-wrapper">
+      <div class="swiper-slide menu">
+        <div class="menu-content">
+          <ul>
+            <li>菜单项 1</li>
+            <li>菜单项 2</li>
+            <li>菜单项 3</li>
+          </ul>
         </div>
       </div>
-        <!-- 右侧渲染 -->
-      <div class="right">
-        <div class="card">
-          <div class="part-title">HTML 预览</div>
-          <div class="part-preview">
-            <div class="box" v-html="renderedHtml"></div>
+
+      <div class="swiper-slide content">
+        <div class="container">
+          <div ref="menuButtonRef" class="menu-button">
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
           </div>
+          <header class="header">
+            <div class="headertitle">MarkForge 3D 编辑器</div>
+          </header>
+
+          <div class="toolbar">
+            <div class="tooltip">
+              <button @click="insertMarkdown('**粗体文字**', 2, 6)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M6 4h8a4 4 0 0 1 0 8H6zM14 12a4 4 0 0 1 0 8H6v-8z"/>
+                </svg>
+              </button>
+              <span class="tooltiptext">粗体 (Bold)</span>
+            </div>
+
+            <div class="tooltip">
+              <button @click="insertMarkdown('*斜体文字*', 1, 5)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <line x1="19" y1="4" x2="10" y2="4"/>
+                  <line x1="14" y1="20" x2="5" y2="20"/>
+                  <line x1="15" y1="4" x2="9" y2="20"/>
+                </svg>
+              </button>
+              <span class="tooltiptext">斜体 (Italic)</span>
+            </div>
+
+            <div class="tooltip">
+              <button @click="insertMarkdown('# 标题1', 2)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M4 6v12M12 6v12M4 12h8"/>
+                  <text x="16" y="15" font-size="8" fill="currentColor">1</text>
+                </svg>
+              </button>
+              <span class="tooltiptext">一级标题</span>
+            </div>
+
+            <div class="tooltip">
+              <button @click="insertMarkdown('[链接文本](https://)', 1, 5)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                </svg>
+              </button>
+              <span class="tooltiptext">插入链接</span>
+            </div>
+
+            <div class="tooltip">
+              <button @click="insertMarkdown('![图片描述](https://)', 2, 6)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <rect x="3" y="3" width="18" height="18" rx="2"/>
+                  <circle cx="8.5" cy="8.5" r="1.5"/>
+                  <path d="M21 15l-5-5L5 21"/>
+                </svg>
+              </button>
+              <span class="tooltiptext">插入图片</span>
+            </div>
+
+            <div class="tooltip">
+              <button @click="insertMarkdown('- 列表项', 2)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <line x1="8" y1="6" x2="21" y2="6"/>
+                  <line x1="8" y1="12" x2="21" y2="12"/>
+                  <line x1="8" y1="18" x2="21" y2="18"/>
+                  <circle cx="4" cy="6" r="1"/>
+                  <circle cx="4" cy="12" r="1"/>
+                  <circle cx="4" cy="18" r="1"/>
+                </svg>
+              </button>
+              <span class="tooltiptext">无序列表</span>
+            </div>
+
+            <div class="tooltip">
+              <button @click="insertMarkdown('```javascript\n// 代码\n```', 13, 13)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <polyline points="16 18 22 12 16 6"/>
+                  <polyline points="8 6 2 12 8 18"/>
+                </svg>
+              </button>
+              <span class="tooltiptext">代码块</span>
+            </div>
+
+            <div class="tooltip">
+              <button @click="insertMarkdown('> 引用内容', 2)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M9 21H5a2 2 0 0 1-2-2v-4a4 4 0 0 1 4-4h2V5H5a7 7 0 0 0-7 7v7a5 5 0 0 0 5 5h4z"/>
+                  <path d="M21 21h-4a2 2 0 0 1-2-2v-4a4 4 0 0 1 4-4h2V5h-2a7 7 0 0 0-7 7v7a5 5 0 0 0 5 5h4z"/>
+                </svg>
+              </button>
+              <span class="tooltiptext">引用</span>
+            </div>
+          </div>
+
+          <div class="main">
+            <div class="left">
+              <div class="card">
+                <div class="part-title">Markdown 输入</div>
+                <div class="part-textarea">
+                  <textarea ref="textareaRef" v-model="markdownText"></textarea>
+                </div>
+              </div>
+            </div>
+
+            <div class="right">
+              <div class="card">
+                <div class="part-title">HTML 预览</div>
+                <div class="part-preview">
+                  <div class="box" v-html="renderedHtml"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="footer">MarkForge 3D © 2025</div>
         </div>
       </div>
     </div>
-
-    <!-- 底部 -->
-    <div class="footer">MarkForge 3D © 2025</div>
   </div>
 </template>
 
 <style lang="scss">
+@import 'swiper/css/bundle';
+
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
+
 body {
   font-size: 26px;
   background-color: #f9f2f1;
   height: 100vh;
   margin: 0;
-  overflow: hidden; /* 防止整个页面滚动 */
+  overflow: hidden;
 }
 
+// Swiper 相关样式
+.swiper-container {
+  width: 100vw;
+  height: 100vh;
+}
+
+.swiper-slide {
+  width: 70%; // 菜单宽度
+  max-width: 320px;
+  background-color: #D8E2DC; // 菜单背景色
+  color: #000000;
+
+  &.content {
+    width: 100%;
+    max-width: none;
+    background-color: #f9f2f1; 
+  }
+}
+
+.menu {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.menu-content {
+  width: 100%;
+  padding: 20px;
+  ul {
+    list-style: none;
+    padding: 0;
+  }
+  li {
+    padding: 10px;
+    font-size: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+}
+
+.menu-button {
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  padding: 15px;
+  cursor: pointer;
+  z-index: 100;
+  background: linear-gradient(to right, #D8E2DC, #fdc1b7);
+  transition: 0.3s;
+}
+
+.menu-button .bar:nth-of-type(1) {
+  margin-top: 0px;
+}
+.menu-button .bar:nth-of-type(3) {
+  margin-bottom: 0px;
+}
+.bar {
+  position: relative;
+  display: block;
+  width: 50px;
+  height: 5px;
+  margin: 10px auto;
+  background-color: #fff;
+  border-radius: 10px;
+  transition: 0.3s;
+}
+.menu-button:hover .bar:nth-of-type(1) {
+  transform: translateY(1.5px) rotate(-4.5deg);
+}
+.menu-button:hover .bar:nth-of-type(2) {
+  opacity: 0.9;
+}
+.menu-button:hover .bar:nth-of-type(3) {
+  transform: translateY(-1.5px) rotate(4.5deg);
+}
+.cross .bar:nth-of-type(1) {
+  transform: translateY(15px) rotate(-45deg);
+}
+.cross .bar:nth-of-type(2) {
+  opacity: 0;
+}
+.cross .bar:nth-of-type(3) {
+  transform: translateY(-15px) rotate(45deg);
+}
+.cross:hover .bar:nth-of-type(1) {
+  transform: translateY(13.5px) rotate(-40.5deg);
+}
+.cross:hover .bar:nth-of-type(2) {
+  opacity: 0.1;
+}
+.cross:hover .bar:nth-of-type(3) {
+  transform: translateY(-13.5px) rotate(40.5deg);
+}
+
+// 保持原有的样式
 .container {
   height: 100vh;
   display: flex;
   flex-direction: column;
+}
 
-  .header {
-    background: linear-gradient(to right, #fdc1b7, #f5e9e6);
-    height: 60px;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    .headertitle {
-      color: white;
-      font-weight: bold;
-      margin: 0 10px;
-    }
+.header {
+  background: linear-gradient(to right, #fdc1b7, #f5e9e6);
+  height: 60px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  .headertitle {
+    color: white;
+    font-weight: bold;
+    margin: 0 10px;
   }
+}
 
-  .main {
-    display: flex;
+.main {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  .left, .right {
     flex: 1;
-    min-height: 0; /* 关键：允许内部元素缩小 */
-    overflow: hidden; /* 防止滚动条出现在这里 */
-    .left,
-    .right {
-      flex: 1;
-      padding: 20px;
-      min-width: 0; /* 防止 flex 元素溢出 */
-      display: flex;
-      flex-direction: column;
+    padding: 20px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .card {
+    flex: 1;
+    min-height: 0;
+    margin: 10px;
+    border: 1px solid gray;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    background-color: white;
+    display: flex;
+    flex-direction: column;
+    
+    .part-title {
+      background: linear-gradient(to right, #FAE1DD, #F8EDEB);
+      padding: 10px;
+      border-bottom: 1px solid gray;
+      font-weight: bold;
+      flex-shrink: 0;
     }
     
-    .card {
+    .part-textarea {
       flex: 1;
-      min-height: 0; /* 关键：允许内部元素缩小 */
-      margin: 10px;
-      border: 1px solid gray;
-      border-radius: 8px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-      background-color: white;
+      min-height: 0;
+      padding: 10px;
       display: flex;
-      flex-direction: column;
-      
-      .part-title {
-        background: linear-gradient(to right, #FAE1DD, #F8EDEB);
-        padding: 10px;
-        border-bottom: 1px solid gray;
-        font-weight: bold;
-        flex-shrink: 0;
-      }
-      
-      .part-textarea {
+      textarea {
+        width: 100%;
         flex: 1;
-        min-height: 0;
+        resize: none;
+        border: 1px solid gray;
+        border-radius: 4px;
         padding: 10px;
-        display: flex;
-       
-        textarea {
-          width: 100%;
-          flex: 1;
-          resize: none;
-          border: 1px solid gray;
-          border-radius: 4px;
-          padding: 10px;
-          font-family: inherit;
-          font-size: 24px;
-          overflow: auto; /* 内容多时显示滚动条 */
-        }
+        font-family: inherit;
+        font-size: 24px;
+        overflow: auto;
       }
-      
-      .part-preview {
+    }
+    
+    .part-preview {
+      flex: 1;
+      min-height: 0;
+      padding: 10px;
+      display: flex;
+      .box {
+        width: 100%;
         flex: 1;
-        min-height: 0;
+        border: 1px solid gray;
+        border-radius: 4px;
         padding: 10px;
-        display: flex;
-        
-        .box {
-          width: 100%;
-          flex: 1;
-          border: 1px solid gray;
-          border-radius: 4px;
-          padding: 10px;
-          font-size: 24px;
-          overflow: auto; /* 内容多时显示滚动条 */
-        }
+        font-size: 24px;
+        overflow: auto;
       }
     }
   }
-
-  .footer {
-    background: linear-gradient(to right, #D8E2DC, #FFE5D9);
-    color: black;
-    text-align: center;
-    padding: 10px;
-    font-size: 14px;
-    flex-shrink: 0;
-  }
 }
 
-/* 添加表格样式以解决没有边框的问题 */
-table {
-  border-collapse: collapse;
-  width: 100%;
-  margin: 1em 0;
+.footer {
+  background: linear-gradient(to right, #D8E2DC, #FFE5D9);
+  color: black;
+  text-align: center;
+  padding: 10px;
+  font-size: 14px;
+  flex-shrink: 0;
 }
 
-th, td {
-  border: 1px solid #ccc;
-  padding: 8px;
-}
-
-th {
-  background-color: #f2f2f2;
-}
-
-ul, ol {
-  padding-left: 20px;
-}
-
+/* 表格、代码、列表样式保留 */
+table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+th, td { border: 1px solid #ccc; padding: 8px; }
+th { background-color: #f2f2f2; }
+ul, ol { padding-left: 20px; }
 pre[class*="language-"] {
   border-radius: 8px;
   margin: 1em 0;
@@ -218,19 +442,57 @@ pre[class*="language-"] {
   overflow: auto;
   background: #f5f7ff;
   border: 1px solid #e1e4e8;
-  
-  code {
-    font-family: 'Fira Code', Consolas, Monaco, monospace;
-    font-size: 0.9em;
-    line-height: 1.5;
-  }
+  code { font-family: 'Fira Code', Consolas, Monaco, monospace; font-size: 0.9em; line-height: 1.5; }
 }
-
 code:not([class*="language-"]) {
-  background: #F8EDEB;
+  background: #d8d8d8;
   padding: 0.2em 0.4em;
   border-radius: 3px;
   font-size: 0.9em;
 }
 
+/* 工具栏 */
+.toolbar {
+  display: flex;
+  gap: 8px;
+  padding: 6px 10px;
+  background: #fafafa;
+  border-bottom: 1px solid #ddd;
+  flex-shrink: 0;
+  button {
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    padding: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    svg { stroke-width: 2; }
+    &:hover { background: #f0f0f0; transform: translateY(-1px); }
+  }
+}
+
+/* Tooltip */
+.tooltip { position: relative; display: inline-block;
+  .tooltiptext {
+    visibility: hidden;
+    opacity: 0;
+    background-color: #333;
+    color: #fff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    position: absolute;
+    z-index: 1;
+    bottom: -35px;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    font-size: 17px;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+  }
+  &:hover .tooltiptext { visibility: visible; opacity: 1; }
+}
 </style>
