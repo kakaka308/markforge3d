@@ -28,6 +28,16 @@ const markdownText = ref(`# Hello Markdown
 | 左对齐 | 居中 | 右对齐 |
 | 内容1 | 内容2 | 内容3 |
 
+\`\`\`javascript
+// 代码高亮示例
+function hello() {
+  console.log('Hello Prism.js!');
+  return <div>JSX 也会被高亮</div>;
+}
+\`\`\`
+
+\`内联代码也会高亮\`
+
 `)
 
 const renderedHtml = computed(() => parseMarkdown(markdownText.value))
@@ -74,7 +84,7 @@ const renderedHtml = computed(() => parseMarkdown(markdownText.value))
   box-sizing: border-box;
 }
 body {
-  font-size: 20px;
+  font-size: 26px;
   background-color: #f9f2f1;
   height: 100vh;
   margin: 0;
@@ -105,7 +115,6 @@ body {
     flex: 1;
     min-height: 0; /* 关键：允许内部元素缩小 */
     overflow: hidden; /* 防止滚动条出现在这里 */
-    
     .left,
     .right {
       flex: 1;
@@ -139,7 +148,7 @@ body {
         min-height: 0;
         padding: 10px;
         display: flex;
-        
+       
         textarea {
           width: 100%;
           flex: 1;
@@ -148,7 +157,7 @@ body {
           border-radius: 4px;
           padding: 10px;
           font-family: inherit;
-          font-size: 19px;
+          font-size: 24px;
           overflow: auto; /* 内容多时显示滚动条 */
         }
       }
@@ -165,7 +174,7 @@ body {
           border: 1px solid gray;
           border-radius: 4px;
           padding: 10px;
-          font-size: 19px;
+          font-size: 24px;
           overflow: auto; /* 内容多时显示滚动条 */
         }
       }
@@ -201,4 +210,27 @@ th {
 ul, ol {
   padding-left: 20px;
 }
+
+pre[class*="language-"] {
+  border-radius: 8px;
+  margin: 1em 0;
+  padding: 1em;
+  overflow: auto;
+  background: #f5f7ff;
+  border: 1px solid #e1e4e8;
+  
+  code {
+    font-family: 'Fira Code', Consolas, Monaco, monospace;
+    font-size: 0.9em;
+    line-height: 1.5;
+  }
+}
+
+code:not([class*="language-"]) {
+  background: #F8EDEB;
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
 </style>
