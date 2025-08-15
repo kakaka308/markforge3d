@@ -1,20 +1,30 @@
 <script setup>
 import parseMarkdown from 'markdown-three-parser'
-import { ref, computed, watch, onMounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import Swiper from 'swiper/bundle'
 import 'swiper/css/bundle'
 
+
+
+// --- 自动保存功能实现 ---
+
+// 定义 localStorage 的键名，用于存储草稿
 const STORAGE_KEY = 'my_markdown_draft'
+
+// 尝试从 localStorage 读取草稿。如果没有，则使用默认值。
 const markdownText = ref(localStorage.getItem(STORAGE_KEY) || `# Hello Markdown\n\n`)
 
+// 监听 markdownText 的变化，并自动保存到 localStorage
+// 这是一个深度监听，确保任何更改都能被捕获
 watch(markdownText, (newVal) => {
   localStorage.setItem(STORAGE_KEY, newVal)
-})
+}, { deep: true })
 
 const renderedHtml = computed(() => parseMarkdown(markdownText.value))
 
 const textareaRef = ref(null)
 
+// 插入 Markdown 模板的函数
 function insertMarkdown(template, cursorStart = null, cursorEnd = null) {
   const textarea = textareaRef.value
   if (!textarea) return
@@ -38,6 +48,71 @@ function insertMarkdown(template, cursorStart = null, cursorEnd = null) {
 // Swiper 初始化
 const menuButtonRef = ref(null)
 const swiperInstance = ref(null)
+
+// 快捷键处理函数
+const handleShortcut = (e) => {
+  // 检查是否为 Ctrl 或 Cmd 键
+  const isMac = navigator.platform.includes('Mac')
+  const isModifier = isMac ? e.metaKey : e.ctrlKey
+
+  if (isModifier) {
+    switch (e.key) {
+      case 'b': // 粗体
+        e.preventDefault()
+        insertMarkdown('**粗体文字**', 2, 6)
+        break
+      case 'i': // 斜体
+        e.preventDefault()
+        insertMarkdown('*斜体文字*', 1, 5)
+        break
+      case '1': // 标题
+        e.preventDefault()
+        insertMarkdown('# 标题1', 1)
+        break
+      case '2': // 标题
+        e.preventDefault()
+        insertMarkdown('## 标题2', 2)
+        break
+      case '3': // 标题
+        e.preventDefault()
+        insertMarkdown('### 标题3', 3)
+        break
+      case '4': // 标题
+        e.preventDefault()
+        insertMarkdown('#### 标题4', 4)
+        break
+      case '5': // 标题
+        e.preventDefault()
+        insertMarkdown('##### 标题5', 5)
+        break
+      case 'k': // 链接
+        e.preventDefault()
+        insertMarkdown('[链接文本](https://)', 1, 5)
+        break
+      case 'l': // 无序列表
+        e.preventDefault()
+        insertMarkdown('- 列表项', 2)
+        break
+      case 'e': // 代码块
+        e.preventDefault()
+        insertMarkdown('```javascript\n// 代码\n```', 13, 13)
+        break
+      case 'I': // 图片 (Ctrl+Shift+I)
+        if (e.shiftKey) {
+          e.preventDefault()
+          insertMarkdown('![图片描述](https://)', 2, 6)
+        }
+        break
+      case 'Q': // 引用 (Ctrl+Shift+Q)
+        if (e.shiftKey) {
+          e.preventDefault()
+          insertMarkdown('> 引用内容', 2)
+        }
+        break
+    }
+  }
+}
+
 
 onMounted(() => {
   console.log('草稿已从 localStorage 恢复')
@@ -76,6 +151,38 @@ onMounted(() => {
   // 初始状态添加监听器
   if (swiperInstance.value.activeIndex === 1) {
     menuButton.addEventListener('click', openMenu)
+  }
+
+  // 为任务列表添加事件监听，实现点击预览区复选框同步修改 Markdown 文本
+  const previewBox = document.querySelector('.part-preview .box')
+  previewBox.addEventListener('change', (e) => {
+    if (e.target.type === 'checkbox') {
+      const index = Array.from(previewBox.querySelectorAll('input[type=checkbox]')).indexOf(e.target)
+      // 找到第 index 个任务列表在 markdownText 中对应的行
+      let lines = markdownText.value.split('\n')
+      let taskCount = -1
+      for (let i = 0; i < lines.length; i++) {
+        if (/^\s*[-*]\s+\[( |x|X)\]/.test(lines[i])) {
+          taskCount++
+          if (taskCount === index) {
+            // 切换 [ ] <-> [x]
+            lines[i] = lines[i].replace(/\[( |x|X)\]/, e.target.checked ? '[x]' : '[ ]')
+            break
+          }
+        }
+      }
+      markdownText.value = lines.join('\n')
+    }
+  })
+
+  // 添加键盘事件监听器
+  textareaRef.value.addEventListener('keydown', handleShortcut)
+})
+
+// 在组件卸载前移除事件监听器
+onBeforeUnmount(() => {
+  if (textareaRef.value) {
+    textareaRef.value.removeEventListener('keydown', handleShortcut)
   }
 })
 </script>
@@ -250,7 +357,7 @@ body {
   &.content {
     width: 100%;
     max-width: none;
-    background-color: #f9f2f1; 
+    background-color: #f9f2f1;
   }
 }
 
@@ -270,7 +377,7 @@ body {
   li {
     padding: 10px;
     font-size: 20px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    border-bottom: 1px solid gray;
     &:last-child {
       border-bottom: none;
     }
@@ -281,7 +388,7 @@ body {
   position: absolute;
   top: 0px;
   left: 0px;
-  padding: 15px;
+  padding: 13px;
   cursor: pointer;
   z-index: 100;
   background: linear-gradient(to right, #D8E2DC, #fdc1b7);
@@ -341,7 +448,7 @@ body {
 
 .header {
   background: linear-gradient(to right, #fdc1b7, #f5e9e6);
-  height: 60px;
+  height: 60.94px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -494,5 +601,30 @@ code:not([class*="language-"]) {
     pointer-events: none;
   }
   &:hover .tooltiptext { visibility: visible; opacity: 1; }
+}
+
+// 复选框样式
+.part-preview input[type="checkbox"] {
+  appearance: none; /* 去掉默认样式 */
+  width: 20px;
+  height: 20px;
+  border: 2px solid #FEC89A;
+  border-radius: 4px;
+  cursor: pointer;
+  position: relative;
+  vertical-align: middle;
+}
+
+.part-preview input[type="checkbox"]:checked {
+  background-color: #FEC89A;
+}
+
+.part-preview input[type="checkbox"]:checked::after {
+  content: '✓';
+  position: absolute;
+  top: 0;
+  left: 4px;
+  color: white;
+  font-size: 16px;
 }
 </style>
