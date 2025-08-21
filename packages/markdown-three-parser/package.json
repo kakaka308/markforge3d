@@ -17,12 +17,20 @@
     "build": "vite build",
     "dev": "vite build --watch"
   },
-  "keywords": ["markdown", "parser", "3d", "math"],
+  "keywords": [
+    "markdown",
+    "parser",
+    "3d",
+    "math"
+  ],
   "author": "Your Name",
   "license": "MIT",
   "packageManager": "pnpm@10.12.4",
   "dependencies": {
-    "katex": "^0.16.22"
+    "html2canvas": "^1.4.1",
+    "jspdf": "^3.0.1",
+    "katex": "^0.16.22",
+    "prismjs": "^1.30.0"
   },
   "devDependencies": {
     "vite": "^7.1.1"

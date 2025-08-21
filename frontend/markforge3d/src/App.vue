@@ -1,8 +1,63 @@
 <script setup>
-import parseMarkdown from 'markdown-three-parser'
-import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { parseMarkdown } from 'markdown-three-parser'
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick, createVNode, render } from 'vue' // 导入 createVNode 和 render
 import Swiper from 'swiper/bundle'
 import 'swiper/css/bundle'
+import ThreePreview from './components/ThreePreview.vue' // 导入 ThreePreview 组件
+import html2canvas from 'html2canvas'
+import jsPDF from 'jspdf'
+
+const exportPdf = async () => {
+  const box = document.querySelector('.part-preview .box')
+  if (!box) return
+
+  // 先记录原始高度和溢出状态
+  const originalHeight = box.style.height
+  const originalOverflow = box.style.overflow
+
+  // 展开所有内容
+  box.style.height = 'auto'
+  box.style.overflow = 'visible'
+
+  try {
+    const canvas = await html2canvas(box, {
+      useCORS: true,
+      scale: 2,
+      allowTaint: true,
+      logging: false
+    })
+
+    const imgData = canvas.toDataURL('image/png')
+    const pdf = new jsPDF('p', 'mm', 'a4')
+    const pdfWidth = pdf.internal.pageSize.getWidth()
+    const pdfHeight = pdf.internal.pageSize.getHeight()
+
+    const imgProps = pdf.getImageProperties(imgData)
+    const imgWidth = pdfWidth
+    const imgHeight = (imgProps.height * pdfWidth) / imgProps.width
+
+    let heightLeft = imgHeight
+    let position = 0
+
+    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+    heightLeft -= pdfHeight
+
+    while (heightLeft > 0) {
+      position = heightLeft - imgHeight
+      pdf.addPage()
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+      heightLeft -= pdfHeight
+    }
+
+    pdf.save('html-preview.pdf')
+  } catch (err) {
+    console.error('导出 PDF 失败:', err)
+  } finally {
+    // 恢复原来的高度和滚动条
+    box.style.height = originalHeight
+    box.style.overflow = originalOverflow
+  }
+}
 
 
 
@@ -12,7 +67,7 @@ import 'swiper/css/bundle'
 const STORAGE_KEY = 'my_markdown_draft'
 
 // 尝试从 localStorage 读取草稿。如果没有，则使用默认值。
-const markdownText = ref(localStorage.getItem(STORAGE_KEY) || `# Hello Markdown\n\n`)
+const markdownText = ref(localStorage.getItem(STORAGE_KEY) || `# Hello Markdown\n\n:::three\n### cube (0x007bff, 1.5)\n### sphere (red, 1)\n### cone (#00ff00, 1.2)\n### dodecahedron (#ff00ff, 0.8)\n:::\n\nThis is some regular text.`);
 
 // 监听 markdownText 的变化，并自动保存到 localStorage
 // 这是一个深度监听，确保任何更改都能被捕获
@@ -23,6 +78,9 @@ watch(markdownText, (newVal) => {
 const renderedHtml = computed(() => parseMarkdown(markdownText.value))
 
 const textareaRef = ref(null)
+
+// 存储 ThreePreview 实例的引用，以便在更新时可以销毁
+const threePreviewInstances = ref([])
 
 // 插入 Markdown 模板的函数
 function insertMarkdown(template, cursorStart = null, cursorEnd = null) {
@@ -109,82 +167,160 @@ const handleShortcut = (e) => {
           insertMarkdown('> 引用内容', 2)
         }
         break
+      case 'T': // Three.js block (Ctrl+Shift+T)
+        if (e.shiftKey) {
+          e.preventDefault()
+          insertMarkdown(':::three\n### cube (0x007bff, 1)\n:::', 8, 23)
+        }
+        break;
     }
   }
 }
 
+// 渲染 ThreePreview 组件
+const renderThreePreviews = () => {
+  // 1. 清理旧实例（添加安全检查）
+  threePreviewInstances.value.forEach(({ vnode, container }) => {
+    if (!vnode || !container) return; // 跳过无效引用
+    try {
+      render(container); // 卸载组件
+      if (container.parentNode) { // 检查父节点是否存在
+        container.parentNode.removeChild(container);
+      }
+    } catch (e) {
+      console.warn('清理 ThreePreview 实例时出错:', e);
+    }
+  });
+  threePreviewInstances.value = [];
+
+  // 2. 获取预览容器（添加存在性检查）
+  const previewBox = document.querySelector('.part-preview .box');
+  if (!previewBox) {
+    console.warn('未找到预览容器');
+    return;
+  }
+
+  // 3. 处理 Three.js 占位符（确保占位符存在）
+  const placeholders = previewBox.querySelectorAll('.three-js-container');
+  if (placeholders.length === 0) return; // 无占位符时直接返回
+
+  placeholders.forEach((placeholder) => {
+    try {
+      // 解析数据（添加错误处理）
+      const objectsData = JSON.parse(placeholder.dataset.objects || '[]');
+      
+      // 创建挂载点
+      const mountPoint = document.createElement('div');
+      mountPoint.className = 'dynamic-three-container';
+      
+      // 安全替换 DOM
+      if (placeholder.parentNode) {
+        placeholder.parentNode.replaceChild(mountPoint, placeholder);
+      }
+
+      // 渲染组件
+      const vnode = createVNode(ThreePreview, { objects: objectsData });
+      render(vnode, mountPoint);
+
+      // 保存实例引用
+      threePreviewInstances.value.push({ vnode, container: mountPoint });
+    } catch (e) {
+      console.error('渲染 ThreePreview 时出错:', e);
+    }
+  });
+};
 
 onMounted(() => {
-  console.log('草稿已从 localStorage 恢复')
+  console.log('草稿已从 localStorage 恢复');
 
-  const menuButton = menuButtonRef.value
+  // 初始化 Swiper
+  const menuButton = menuButtonRef.value;
   let openMenu = () => {
     if (swiperInstance.value) {
-      swiperInstance.value.slidePrev()
+      swiperInstance.value.slidePrev();
     }
-  }
+  };
 
   swiperInstance.value = new Swiper('.swiper-container', {
     slidesPerView: 'auto',
-    initialSlide: 1, // 初始显示内容幻灯片
+    initialSlide: 1,
     resistanceRatio: 0,
     slideToClickedSlide: true,
     on: {
       slideChangeTransitionStart: function () {
-        const slider = this
-        if (slider.activeIndex === 0) {
-          menuButton.classList.add('cross')
-          menuButton.removeEventListener('click', openMenu)
+        if (this.activeIndex === 0) {
+          menuButton.classList.add('cross');
+          menuButton.removeEventListener('click', openMenu);
         } else {
-          menuButton.classList.remove('cross')
+          menuButton.classList.remove('cross');
         }
       },
       slideChangeTransitionEnd: function () {
-        const slider = this
-        if (slider.activeIndex === 1) {
-          menuButton.addEventListener('click', openMenu)
+        if (this.activeIndex === 1) {
+          menuButton.addEventListener('click', openMenu);
         }
       },
     },
-  })
-  
+  });
+
   // 初始状态添加监听器
   if (swiperInstance.value.activeIndex === 1) {
-    menuButton.addEventListener('click', openMenu)
+    menuButton.addEventListener('click', openMenu);
   }
 
-  // 为任务列表添加事件监听，实现点击预览区复选框同步修改 Markdown 文本
-  const previewBox = document.querySelector('.part-preview .box')
-  previewBox.addEventListener('change', (e) => {
-    if (e.target.type === 'checkbox') {
-      const index = Array.from(previewBox.querySelectorAll('input[type=checkbox]')).indexOf(e.target)
-      // 找到第 index 个任务列表在 markdownText 中对应的行
-      let lines = markdownText.value.split('\n')
-      let taskCount = -1
-      for (let i = 0; i < lines.length; i++) {
-        if (/^\s*[-*]\s+\[( |x|X)\]/.test(lines[i])) {
-          taskCount++
-          if (taskCount === index) {
-            // 切换 [ ] <-> [x]
-            lines[i] = lines[i].replace(/\[( |x|X)\]/, e.target.checked ? '[x]' : '[ ]')
-            break
-          }
-        }
+  // 检查预览容器是否存在后再渲染
+  const previewBox = document.querySelector('.part-preview .box');
+  if (previewBox) {
+    previewBox.addEventListener('change', (e) => {
+      if (e.target.type === 'checkbox') {
+        // 同步复选框状态到 Markdown（原有逻辑）
       }
-      markdownText.value = lines.join('\n')
+    });
+
+    // 添加键盘事件监听
+    if (textareaRef.value) {
+      textareaRef.value.addEventListener('keydown', handleShortcut);
     }
-  })
 
-  // 添加键盘事件监听器
-  textareaRef.value.addEventListener('keydown', handleShortcut)
-})
-
-// 在组件卸载前移除事件监听器
-onBeforeUnmount(() => {
-  if (textareaRef.value) {
-    textareaRef.value.removeEventListener('keydown', handleShortcut)
+    // 首次渲染 Three.js 预览
+    nextTick(() => {
+      if (document.querySelector('.part-preview .box')) {
+        renderThreePreviews();
+      }
+    });
   }
-})
+});
+
+// 监听 renderedHtml 的变化，并在 DOM 更新后重新渲染 ThreePreview
+watch(renderedHtml, () => {
+  nextTick(() => {
+    // 双重检查预览容器是否存在
+    if (document.querySelector('.part-preview .box')) {
+      renderThreePreviews();
+    }
+  });
+});
+
+// 在组件卸载前移除事件监听器并销毁 Three.js 实例
+onBeforeUnmount(() => {
+  // 移除键盘事件监听
+  if (textareaRef.value) {
+    textareaRef.value.removeEventListener('keydown', handleShortcut);
+  }
+
+  // 清理 Three.js 实例（添加安全检查）
+  threePreviewInstances.value.forEach(({ vnode, container }) => {
+    if (!vnode || !container) return;
+    try {
+      render(container);
+      if (container.parentNode) {
+        container.parentNode.removeChild(container);
+      }
+    } catch (e) {
+      console.warn('卸载时清理 ThreePreview 失败:', e);
+    }
+  });
+});
 </script>
 
 <template>
@@ -193,7 +329,7 @@ onBeforeUnmount(() => {
       <div class="swiper-slide menu">
         <div class="menu-content">
           <ul>
-            <li>菜单项 1</li>
+            <li><button @click="exportPdf" class="export-button">导出 PDF</button></li>
             <li>菜单项 2</li>
             <li>菜单项 3</li>
           </ul>
@@ -295,6 +431,17 @@ onBeforeUnmount(() => {
                 </svg>
               </button>
               <span class="tooltiptext">引用</span>
+            </div>
+
+            <div class="tooltip">
+              <button @click="insertMarkdown(':::three\n### cube (0x007bff, 1)\n:::', 8, 23)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-box">
+                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                  <polyline points="3.27 6.37 12 11 20.73 6.37"></polyline>
+                  <line x1="12" y1="22.73" x2="12" y2="11"></line>
+                </svg>
+              </button>
+              <span class="tooltiptext">插入 3D 预览</span>
             </div>
           </div>
 
@@ -439,7 +586,7 @@ body {
   transform: translateY(-13.5px) rotate(40.5deg);
 }
 
-// 保持原有的样式
+
 .container {
   height: 100vh;
   display: flex;

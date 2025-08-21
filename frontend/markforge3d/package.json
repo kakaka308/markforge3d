@@ -10,8 +10,11 @@
   },
   "dependencies": {
     "element-plus": "^2.10.5",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^3.0.1",
     "markdown-three-parser": "workspace:*",
     "swiper": "^11.2.10",
+    "three": "^0.179.1",
     "vue": "^3.5.17"
   },
   "devDependencies": {
