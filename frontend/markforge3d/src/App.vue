@@ -11,7 +11,10 @@ const exportPdf = async () => {
   const box = document.querySelector('.part-preview .box')
   if (!box) return
 
-  // 先记录原始高度和溢出状态
+  // 显示加载状态
+  // 您可以在这里添加加载状态UI
+
+  // 记录原始样式
   const originalHeight = box.style.height
   const originalOverflow = box.style.overflow
 
@@ -22,9 +25,10 @@ const exportPdf = async () => {
   try {
     const canvas = await html2canvas(box, {
       useCORS: true,
-      scale: 2,
+      scale: 2, // 提高输出质量
       allowTaint: true,
-      logging: false
+      logging: false,
+      backgroundColor: '#ffffff'
     })
 
     const imgData = canvas.toDataURL('image/png')
@@ -49,9 +53,14 @@ const exportPdf = async () => {
       heightLeft -= pdfHeight
     }
 
-    pdf.save('html-preview.pdf')
+    pdf.save('markforge-export.pdf')
+    
+    // 显示成功消息
+    // 您可以在这里添加成功状态UI
+    
   } catch (err) {
     console.error('导出 PDF 失败:', err)
+    // 显示错误消息
   } finally {
     // 恢复原来的高度和滚动条
     box.style.height = originalHeight
@@ -329,7 +338,7 @@ onBeforeUnmount(() => {
       <div class="swiper-slide menu">
         <div class="menu-content">
           <ul>
-            <li><button @click="exportPdf" class="export-button">导出 PDF</button></li>
+            <li><button @click="exportPdf" class="export-button">导出为 PDF</button></li>
             <li>菜单项 2</li>
             <li>菜单项 3</li>
           </ul>
@@ -443,6 +452,10 @@ onBeforeUnmount(() => {
               </button>
               <span class="tooltiptext">插入 3D 预览</span>
             </div>
+
+            <div>
+              <input type="checkbox" id="switch" switch class="input input--switch"  value="dark"></input>
+            </div>
           </div>
 
           <div class="main">
@@ -458,8 +471,10 @@ onBeforeUnmount(() => {
             <div class="right">
               <div class="card">
                 <div class="part-title">HTML 预览</div>
-                <div class="part-preview">
-                  <div class="box" v-html="renderedHtml"></div>
+                <div class="scroll-container">
+                  <div class="part-preview">
+                      <div class="box" v-html="renderedHtml"></div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -523,10 +538,16 @@ body {
   }
   li {
     padding: 10px;
-    font-size: 20px;
+    font-size: large;
     border-bottom: 1px solid gray;
+    cursor: pointer;
     &:last-child {
       border-bottom: none;
+    }
+    .export-button {
+      background: transparent;
+      border: none;
+      font-size: large;
     }
   }
 }
@@ -611,17 +632,17 @@ body {
   display: flex;
   flex: 1;
   min-height: 0;
-  overflow: hidden;
+
   .left, .right {
     flex: 1;
     padding: 20px;
     min-width: 0;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
   }
   
   .card {
-    flex: 1;
     min-height: 0;
     margin: 10px;
     border: 1px solid gray;
@@ -630,7 +651,7 @@ body {
     background-color: white;
     display: flex;
     flex-direction: column;
-    
+    overflow: hidden;
     .part-title {
       background: linear-gradient(to right, #FAE1DD, #F8EDEB);
       padding: 10px;
@@ -638,38 +659,33 @@ body {
       font-weight: bold;
       flex-shrink: 0;
     }
+    .scroll-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+    }
     
     .part-textarea {
-      flex: 1;
-      min-height: 0;
-      padding: 10px;
-      display: flex;
       textarea {
         width: 100%;
-        flex: 1;
+        min-height: 1000px;
         resize: none;
         border: 1px solid gray;
         border-radius: 4px;
         padding: 10px;
         font-family: inherit;
         font-size: 24px;
-        overflow: auto;
       }
     }
     
     .part-preview {
-      flex: 1;
-      min-height: 0;
-      padding: 10px;
-      display: flex;
       .box {
         width: 100%;
-        flex: 1;
+        min-height: 300px;
         border: 1px solid gray;
         border-radius: 4px;
         padding: 10px;
         font-size: 24px;
-        overflow: auto;
       }
     }
   }
@@ -726,6 +742,7 @@ code:not([class*="language-"]) {
     svg { stroke-width: 2; }
     &:hover { background: #f0f0f0; transform: translateY(-1px); }
   }
+  
 }
 
 /* Tooltip */
