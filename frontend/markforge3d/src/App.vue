@@ -11,9 +11,6 @@ const exportPdf = async () => {
   const box = document.querySelector('.part-preview .box')
   if (!box) return
 
-  // 显示加载状态
-  // 您可以在这里添加加载状态UI
-
   // 记录原始样式
   const originalHeight = box.style.height
   const originalOverflow = box.style.overflow
@@ -22,10 +19,17 @@ const exportPdf = async () => {
   box.style.height = 'auto'
   box.style.overflow = 'visible'
 
+  // ⭐ 临时强制亮色模式
+  const root = document.documentElement
+  root.classList.add('force-light')
+
   try {
+    // ⭐ 等待样式真正生效
+    await new Promise(resolve => setTimeout(resolve, 100))
+
     const canvas = await html2canvas(box, {
       useCORS: true,
-      scale: 2, // 提高输出质量
+      scale: 2, // 提高清晰度
       allowTaint: true,
       logging: false,
       backgroundColor: '#ffffff'
@@ -54,19 +58,16 @@ const exportPdf = async () => {
     }
 
     pdf.save('markforge-export.pdf')
-    
-    // 显示成功消息
-    // 您可以在这里添加成功状态UI
-    
   } catch (err) {
     console.error('导出 PDF 失败:', err)
-    // 显示错误消息
   } finally {
-    // 恢复原来的高度和滚动条
+    // 恢复原样
     box.style.height = originalHeight
     box.style.overflow = originalOverflow
+    root.classList.remove('force-light')
   }
 }
+
 
 
 
@@ -241,6 +242,20 @@ const renderThreePreviews = () => {
 
 onMounted(() => {
   console.log('草稿已从 localStorage 恢复');
+
+// 🌙 恢复主题状态
+  const theme = localStorage.getItem('theme') || 'light'
+  const switchEl = document.getElementById('switch')
+  if (theme === 'dark') {
+    switchEl.checked = true
+  } else {
+    switchEl.checked = false
+  }
+
+  // 监听开关变化，保存到 localStorage
+  switchEl.addEventListener('change', (e) => {
+    localStorage.setItem('theme', e.target.checked ? 'dark' : 'light')
+  })
 
   // 初始化 Swiper
   const menuButton = menuButtonRef.value;
@@ -490,6 +505,67 @@ onBeforeUnmount(() => {
 <style lang="scss">
 @import 'swiper/css/bundle';
 
+/* 定义根元素 (:root) 的样式和变量 */
+:root {
+    /* 定义主题颜色变量 */
+    --bg-color: #ffffff;          /* 浅色模式背景 */
+    --color: #000000;             /* 浅色模式文字 */
+    --bg-color-dark: #0d1b2a;     /* 深色模式背景 */
+    --color-dark: #ffffff;        /* 深色模式文字 */
+    --color-accent: #517c9e;      /* 强调色 (蓝色) */
+    --bg-toolbar:#fafafa;
+    --bg-toolbar-dark: #415a77;
+    --bg-parttitle: linear-gradient(to right, #FAE1DD, #F8EDEB);
+    --bg-parttitle-dark: linear-gradient(to right, #415a77, #778da9);
+    --bg-header: linear-gradient(to right, #fdc1b7, #f5e9e6);
+    --bg-header-dark: linear-gradient(to right, #0d1b2a, #415a77);
+    --bg-menu-button: linear-gradient(to right, #D8E2DC, #fdc1b7);
+    --bg-menu-button-dark: linear-gradient(to left, #0d1b2a, #415a77);
+    --bg-swiper-slide: #f9f2f1;
+    --bg-swiper-slide-dark: #415a77;
+    --bg-footer: linear-gradient(to right, #D8E2DC, #FFE5D9);
+    --bg-footer-dark: linear-gradient(to right, #415a77, #0d1b2a);
+    --bg-th: #f2f2f2;
+    --bg-th-dark: #778da9;
+    --checkbox: #FEC89A;
+    --checkbox-dark: #778da9;
+    /* 应用基础样式 */
+    color-scheme: light dark; 
+    font-family: 'Mulish', system-ui, sans-serif;
+    font-weight: 200;
+    line-height: 1.4;
+    background-color: var(--bg-color);
+    color: var(--color);
+}
+
+/* 深色模式：当开关被选中时应用 */
+:root:has(#switch:checked) {
+  --bg-color: var(--bg-color-dark);
+  --color: var(--color-dark);
+  --bg-toolbar: var(--bg-toolbar-dark);
+  --bg-parttitle: var(--bg-parttitle-dark);
+  --bg-header: var(--bg-header-dark);
+  --bg-menu-button: var(--bg-menu-button-dark);
+  --bg-swiper-slide: var( --bg-swiper-slide-dark);
+  --bg-footer: var(--bg-footer-dark);
+  --bg-th: var(--bg-th-dark);
+  --checkbox: var(--checkbox-dark);
+}
+
+:root.force-light {
+  --bg-color: #ffffff !important;
+  --color: #000000 !important;
+  --bg-toolbar:#fafafa !important;
+  --bg-parttitle: linear-gradient(to right, #FAE1DD, #F8EDEB) !important;
+  --bg-header: linear-gradient(to right, #fdc1b7, #f5e9e6) !important;
+  --bg-menu-button: linear-gradient(to right, #D8E2DC, #fdc1b7) !important;
+  --bg-swiper-slide: #f9f2f1 !important;
+  --bg-footer: linear-gradient(to right, #D8E2DC, #FFE5D9) !important;
+  --bg-th: #f2f2f2 !important;
+  --checkbox: #FEC89A !important;
+}
+
+
 * {
   margin: 0;
   padding: 0;
@@ -498,7 +574,8 @@ onBeforeUnmount(() => {
 
 body {
   font-size: 26px;
-  background-color: #f9f2f1;
+  background-color: var(--bg-color);
+  color: var(--color);
   height: 100vh;
   margin: 0;
   overflow: hidden;
@@ -513,13 +590,13 @@ body {
 .swiper-slide {
   width: 70%; // 菜单宽度
   max-width: 320px;
-  background-color: #D8E2DC; // 菜单背景色
-  color: #000000;
+  background-color: var(--bg-swiper-slide); // 菜单背景色
+  color: var(--color);
 
   &.content {
     width: 100%;
     max-width: none;
-    background-color: #f9f2f1;
+    background-color: var(--bg-swiper-slide);
   }
 }
 
@@ -546,6 +623,7 @@ body {
     }
     .export-button {
       background: transparent;
+      color: var(--color);
       border: none;
       font-size: large;
     }
@@ -559,7 +637,7 @@ body {
   padding: 13px;
   cursor: pointer;
   z-index: 100;
-  background: linear-gradient(to right, #D8E2DC, #fdc1b7);
+  background: var(--bg-menu-button);
   transition: 0.3s;
 }
 
@@ -612,21 +690,102 @@ body {
   height: 100vh;
   display: flex;
   flex-direction: column;
-}
 
-.header {
-  background: linear-gradient(to right, #fdc1b7, #f5e9e6);
-  height: 60.94px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  .headertitle {
-    color: white;
-    font-weight: bold;
-    margin: 0 10px;
+  .header {
+    background: var(--bg-header);
+    height: 60.94px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    .headertitle {
+      color: white;
+      font-weight: bold;
+      margin: 0 10px;
+    }
+  }
+
+  /* 工具栏 */
+  .toolbar {
+    display: flex;
+    gap: 8px;
+    padding: 6px 10px;
+    background: var(--bg-toolbar);
+    border-bottom: 1px solid #ddd;
+    flex-shrink: 0;
+
+    /* Tooltip */
+    .tooltip { position: relative; display: inline-block;
+      .tooltiptext {
+        visibility: hidden;
+        opacity: 0;
+        padding: 4px 8px;
+        border-radius: 4px;
+        position: absolute;
+        z-index: 1;
+        bottom: -35px;
+        left: 50%;
+        transform: translateX(-50%);
+        white-space: nowrap;
+        font-size: 17px;
+        transition: opacity 0.2s ease;
+        pointer-events: none;
+      }
+      &:hover .tooltiptext { visibility: visible; opacity: 1; }
+
+      button {
+        background: white;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        padding: 4px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        svg { stroke-width: 2; }
+        &:hover { background: #f0f0f0; transform: translateY(-1px); }
+      } 
+    }
+    
+    /* 开关容器样式 */
+    .input--switch {
+        position: fixed; /* 固定在页面上，例如右上角 */
+        top: 4.5rem;
+        right: 1rem;
+        width: 3rem;
+        height: 1.5rem;
+        border-radius: 4rem; /* 圆角，形成轨道 */
+        border: 2px solid var(--color); /* 轨道边框颜色 */
+        background-color: transparent; /* 轨道背景透明 */
+        cursor: pointer;
+        appearance: none; /* 移除默认复选框样式 */
+        z-index: 1000; /* 确保在最上层 */
+    }
+
+    /* 开关的滑块 (使用伪元素) */
+    .input--switch::after {
+        content: "";
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: calc(1.5rem - 4px); /* 考虑边框 */
+        height: calc(1.5rem - 4px);
+        border-radius: 50%; /* 圆形 */
+        background-color: var(--color); /* 滑块颜色 */
+        transition: transform 0.2s ease-in-out; /* 平滑移动动画 */
+        transform: translateX(0); /* 初始位置：最左边 */
+    }
+
+    /* 当开关被选中时，移动滑块到右边 */
+    .input--switch:checked::after {
+        transform: translateX(1.5rem); /* 移动一个滑块的宽度 */
+    }
+
   }
 }
+
+
 
 .main {
   display: flex;
@@ -640,6 +799,7 @@ body {
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    background-color: var(--bg-color);
   }
   
   .card {
@@ -648,12 +808,13 @@ body {
     border: 1px solid gray;
     border-radius: 8px;
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    background-color: white;
+    background-color: var(--bg-color);
+    color: var(--color);
     display: flex;
     flex-direction: column;
     overflow: hidden;
     .part-title {
-      background: linear-gradient(to right, #FAE1DD, #F8EDEB);
+      background: var(--bg-parttitle);
       padding: 10px;
       border-bottom: 1px solid gray;
       font-weight: bold;
@@ -675,6 +836,8 @@ body {
         padding: 10px;
         font-family: inherit;
         font-size: 24px;
+        background-color: var(--bg-color);
+        color: var(--color);
       }
     }
     
@@ -692,8 +855,8 @@ body {
 }
 
 .footer {
-  background: linear-gradient(to right, #D8E2DC, #FFE5D9);
-  color: black;
+  background: var(--bg-footer);
+  color: var(--color);
   text-align: center;
   padding: 10px;
   font-size: 14px;
@@ -703,14 +866,14 @@ body {
 /* 表格、代码、列表样式保留 */
 table { border-collapse: collapse; width: 100%; margin: 1em 0; }
 th, td { border: 1px solid #ccc; padding: 8px; }
-th { background-color: #f2f2f2; }
+th { background-color: var(--bg-th); }
 ul, ol { padding-left: 20px; }
 pre[class*="language-"] {
   border-radius: 8px;
   margin: 1em 0;
   padding: 1em;
   overflow: auto;
-  background: #f5f7ff;
+  background:  var(--bg-th);
   border: 1px solid #e1e4e8;
   code { font-family: 'Fira Code', Consolas, Monaco, monospace; font-size: 0.9em; line-height: 1.5; }
 }
@@ -721,58 +884,14 @@ code:not([class*="language-"]) {
   font-size: 0.9em;
 }
 
-/* 工具栏 */
-.toolbar {
-  display: flex;
-  gap: 8px;
-  padding: 6px 10px;
-  background: #fafafa;
-  border-bottom: 1px solid #ddd;
-  flex-shrink: 0;
-  button {
-    background: white;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    padding: 4px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    svg { stroke-width: 2; }
-    &:hover { background: #f0f0f0; transform: translateY(-1px); }
-  }
-  
-}
 
-/* Tooltip */
-.tooltip { position: relative; display: inline-block;
-  .tooltiptext {
-    visibility: hidden;
-    opacity: 0;
-    background-color: #333;
-    color: #fff;
-    padding: 4px 8px;
-    border-radius: 4px;
-    position: absolute;
-    z-index: 1;
-    bottom: -35px;
-    left: 50%;
-    transform: translateX(-50%);
-    white-space: nowrap;
-    font-size: 17px;
-    transition: opacity 0.2s ease;
-    pointer-events: none;
-  }
-  &:hover .tooltiptext { visibility: visible; opacity: 1; }
-}
 
 // 复选框样式
 .part-preview input[type="checkbox"] {
   appearance: none; /* 去掉默认样式 */
   width: 20px;
   height: 20px;
-  border: 2px solid #FEC89A;
+  border: 2px solid var(--checkbox);
   border-radius: 4px;
   cursor: pointer;
   position: relative;
@@ -780,7 +899,7 @@ code:not([class*="language-"]) {
 }
 
 .part-preview input[type="checkbox"]:checked {
-  background-color: #FEC89A;
+  background-color: var(--checkbox);
 }
 
 .part-preview input[type="checkbox"]:checked::after {
