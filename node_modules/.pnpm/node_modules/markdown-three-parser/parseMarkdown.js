@@ -18,6 +18,14 @@ export default function parseMarkdown(markdownText) {
   const inlineFootnotes = {};
 
   for (let line of lines) {
+
+    // ====== 分割线处理 ======
+    if (/^(\*\s*\*\s*\*|---|___)\s*$/.test(line)) {
+      flushParagraph(paragraphLines, html, inlineFootnotes); // 先 flush 段落
+      html.push('<hr />');
+      continue;
+    }
+
     // ====== 代码块处理 ======
     if (startOrEndCodeBlock(line, html)) {
       flushParagraph(paragraphLines, html, inlineFootnotes);

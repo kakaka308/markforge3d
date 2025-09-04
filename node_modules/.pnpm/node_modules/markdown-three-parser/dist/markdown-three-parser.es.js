@@ -1892,6 +1892,10 @@ function Xe(a) {
   const c = a.split(`
 `), e = [], r = [], u = [], d = {}, f = {};
   for (let s of c) {
+    if (/^(\*\s*\*\s*\*|---|___)\s*$/.test(s)) {
+      j(u, e, f), e.push("<hr />");
+      continue;
+    }
     if (xe(s, e)) {
       j(u, e, f);
       continue;
