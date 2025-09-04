@@ -81,9 +81,15 @@ const markdownText = ref(localStorage.getItem(STORAGE_KEY) || `# Hello Markdown\
 
 // 监听 markdownText 的变化，并自动保存到 localStorage
 // 这是一个深度监听，确保任何更改都能被捕获
-watch(markdownText, (newVal) => {
-  localStorage.setItem(STORAGE_KEY, newVal)
-}, { deep: true })
+let saveTimeout = null
+
+watch(markdownText, () => {
+  clearTimeout(saveTimeout)
+  saveTimeout = setTimeout(() => {
+    saveVersion()
+  }, 500) // 半秒后保存，避免每次输入都保存
+}, { immediate: true })
+
 
 const renderedHtml = computed(() => parseMarkdown(markdownText.value) || '')
 
@@ -112,6 +118,40 @@ function insertMarkdown(template, cursorStart = null, cursorEnd = null) {
     textarea.setSelectionRange(posStart, posEnd)
   })
 }
+
+// 历史版本列表
+const historyList = ref([])
+
+// 保存历史版本
+function saveVersion() {
+  const last = historyList.value[historyList.value.length - 1]
+  if (!last || last.content !== markdownText.value) {
+    historyList.value.push({
+      timestamp: new Date().toLocaleString(),
+      content: markdownText.value
+    })
+    if (historyList.value.length > 50) historyList.value.shift()
+  }
+}
+
+// 回滚到指定版本
+function rollbackVersion(version) {
+  if (!version) return
+  markdownText.value = version.content
+}
+
+// 自动保存历史
+watch(markdownText, () => {
+  saveVersion()
+}, { immediate: true })
+
+// 控制历史面板显示
+const showHistory = ref(false)
+function toggleHistory() {
+  showHistory.value = !showHistory.value
+}
+
+
 
 // Swiper 初始化
 const menuButtonRef = ref(null)
@@ -357,7 +397,7 @@ onBeforeUnmount(() => {
         <div class="menu-content">
           <ul>
             <li><button @click="exportPdf" class="export-button">导出为 PDF</button></li>
-            <li>菜单项 2</li>
+            <li><button @click="toggleHistory">历史版本</button></li>
             <li>菜单项 3</li>
           </ul>
         </div>
@@ -502,7 +542,20 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </div>
+      <div v-if="showHistory" class="history-panel">
+  <h3>历史版本回顾</h3>
+  <ul>
+    <li v-for="(version, index) in historyList" :key="index">
+      <button @click="rollbackVersion(version)">
+        {{ version.timestamp }}
+      </button>
+    </li>
+  </ul>
+  <button @click="showHistory = false">关闭</button>
+</div>
   </div>
+
+
 </template>
 
 <style lang="scss">
