@@ -1,5 +1,5 @@
 <script setup>
-import { parseMarkdown } from 'markdown-three-parser'
+import {parseMarkdown} from 'markdown-three-parser'
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick, createVNode, render } from 'vue' // 导入 createVNode 和 render
 import Swiper from 'swiper/bundle'
 import 'swiper/css/bundle'
@@ -85,7 +85,7 @@ watch(markdownText, (newVal) => {
   localStorage.setItem(STORAGE_KEY, newVal)
 }, { deep: true })
 
-const renderedHtml = computed(() => parseMarkdown(markdownText.value))
+const renderedHtml = computed(() => parseMarkdown(markdownText.value) || '')
 
 const textareaRef = ref(null)
 
@@ -186,6 +186,9 @@ const handleShortcut = (e) => {
     }
   }
 }
+
+
+
 
 // 渲染 ThreePreview 组件
 const renderThreePreviews = () => {
@@ -521,7 +524,7 @@ onBeforeUnmount(() => {
     --bg-header-dark: linear-gradient(to right, #0d1b2a, #415a77);
     --bg-menu-button: linear-gradient(to right, #D8E2DC, #fdc1b7);
     --bg-menu-button-dark: linear-gradient(to left, #0d1b2a, #415a77);
-    --bg-swiper-slide: #f9f2f1;
+    --bg-swiper-slide: #D8E2DC;
     --bg-swiper-slide-dark: #415a77;
     --bg-footer: linear-gradient(to right, #D8E2DC, #FFE5D9);
     --bg-footer-dark: linear-gradient(to right, #415a77, #0d1b2a);
