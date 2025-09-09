@@ -106,18 +106,23 @@ function insertMarkdown(template, cursorStart = null, cursorEnd = null) {
   const start = textarea.selectionStart
   const end = textarea.selectionEnd
 
-  markdownText.value =
-    markdownText.value.substring(0, start) +
+  // ✅ 直接改 textarea.value
+  const newValue =
+    textarea.value.substring(0, start) +
     template +
-    markdownText.value.substring(end)
+    textarea.value.substring(end)
 
-  nextTick(() => {
-    const posStart = start + (cursorStart ?? template.length)
-    const posEnd = start + (cursorEnd ?? template.length)
-    textarea.focus()
-    textarea.setSelectionRange(posStart, posEnd)
-  })
+  textarea.value = newValue
+  markdownText.value = newValue // 再手动同步到 v-model
+
+  // ✅ 立即设置光标，不依赖 nextTick
+  const posStart = start + (cursorStart ?? template.length)
+  const posEnd = start + (cursorEnd ?? template.length)
+  textarea.setSelectionRange(posStart, posEnd)
+  textarea.focus()
 }
+
+
 
 // 历史版本列表
 const historyList = ref([])
@@ -898,6 +903,9 @@ body {
     }
     
     .part-preview {
+      strong, b {
+        font-weight: 700; 
+      }
       .box {
         width: 100%;
         min-height: 300px;
