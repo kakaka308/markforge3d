@@ -17,11 +17,12 @@ export default function parseMarkdown(markdownText) {
   const footnotes = {};
   const inlineFootnotes = {};
 
-  for (let line of lines) {
+    for (let i = 0; i < lines.length; i++) {
+    let line = lines[i];
 
     // ====== 分割线处理 ======
     if (/^(\*\s*\*\s*\*|---|___)\s*$/.test(line)) {
-      flushParagraph(paragraphLines, html, inlineFootnotes); // 先 flush 段落
+      flushParagraph(paragraphLines, html, inlineFootnotes);
       html.push('<hr />');
       continue;
     }
@@ -84,10 +85,30 @@ export default function parseMarkdown(markdownText) {
       continue;
     }
 
-    // ====== 段落处理 ======
+    // ====== 段落处理（支持多空行）======
     if (line.trim() === '') {
-      // 空行表示段落结束
+      // 空行：结束当前段落
       flushParagraph(paragraphLines, html, inlineFootnotes);
+
+      // 向后统计连续空行数
+      let extraEmptyLines = 0;
+      let j = i + 1;
+      while (j < lines.length && lines[j].trim() === '') {
+        extraEmptyLines++;
+        j++;
+      }
+
+      // 插入 (extraEmptyLines) 个 <p><br></p> 来表示“额外空行”
+      // 如果你想“3个空行显示2个空行”，就用 extraEmptyLines
+      // 因为你已经遇到 1 个空行了，总共 (1 + extraEmptyLines) 个空行
+      // 所以显示 (extraEmptyLines) 个额外间距
+      for (let k = 0; k < extraEmptyLines; k++) {
+        html.push('<p><br /></p>');
+      }
+
+      // 跳过已处理的空行
+      i = j - 1; // 因为 for 循环会 +1
+
     } else {
       paragraphLines.push(line);
     }
