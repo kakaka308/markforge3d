@@ -89,7 +89,10 @@ export default function parseMarkdown(markdownText) {
     if (line.trim() === '') {
       // 空行：结束当前段落
       flushParagraph(paragraphLines, html, inlineFootnotes);
-
+      // 关键修改: 如果列表栈不为空，则在空行处闭合列表
+      if (listStack.length > 0) {
+        flushList(html, listStack);
+      }
       // 向后统计连续空行数
       let extraEmptyLines = 0;
       let j = i + 1;

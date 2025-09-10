@@ -4,18 +4,21 @@ let threeJsObjects = [];
 export function startOrEndThreeBlock(line, html) {
   const trimmed = line.trim();
 
+  // 识别块的开始标记
   if (trimmed === ':::three') {
     inThreeJsBlock = true;
-    threeJsObjects = [];
+    threeJsObjects = []; // 每次开始新块时，清空对象列表
     return true;
   }
 
+  // 识别块的结束标记
   if (trimmed === ':::' && inThreeJsBlock) {
+    // 关键修改：生成一个带有数据的独立占位符
     html.push(
-      `<div class="three-js-container" data-objects='${JSON.stringify(threeJsObjects)}'></div>`
+      `<div class="three-preview" data-objects='${JSON.stringify(threeJsObjects)}'></div>`
     );
     inThreeJsBlock = false;
-    threeJsObjects = [];
+    threeJsObjects = []; // 结束时清空
     return true;
   }
 
@@ -34,6 +37,7 @@ export function handleThreeObject(line) {
     const type = objectMatch[2].toLowerCase();
     let color = objectMatch[3].trim();
 
+    // 转换颜色格式
     if (!color.startsWith('0x') && color.startsWith('#')) {
       color = '0x' + color.substring(1);
     } else if (!color.startsWith('0x') && !isNaN(parseInt(color))) {

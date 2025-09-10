@@ -13,11 +13,9 @@ export function flushParagraph(paragraphLines, html, inlineFootnotes) {
 
   let escapedText = escapeHTML(protectedCodeText);
 
-  // inline math
   let processedText = escapedText.replace(/(?<!\$)\$(?!\$)(.+?)(?<!\$)\$(?!\$)/g,
     (_, expr) => renderMath(expr.trim(), false));
 
-  // links, emphasis, images...
   processedText = processedText
     .replace(/\[\^(.+?)\]\((.+?)\)/g, (_, key, content) => {
       const footnoteKey = key.trim() || `inline-footnote-${Object.keys(inlineFootnotes).length + 1}`;

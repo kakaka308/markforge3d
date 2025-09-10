@@ -1,4 +1,4 @@
-import Ce from "katex";
+import je from "katex";
 function P(a = "") {
   return a.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
@@ -6,8 +6,8 @@ function ee(a = "") {
   const u = {};
   let e = 0;
   return a = a.replace(/<[^>]+>/g, (r) => {
-    const i = `@@HTML${e}@@`;
-    return u[i] = r, e++, i;
+    const s = `@@HTML${e}@@`;
+    return u[s] = r, e++, s;
   }), { text: a, map: u };
 }
 function Z(a = "", u = {}) {
@@ -16,9 +16,9 @@ function Z(a = "", u = {}) {
 function te(a = "") {
   const u = {};
   let e = 0;
-  return a = a.replace(/`([^`\n]+)`/g, (r, i) => {
+  return a = a.replace(/`([^`\n]+)`/g, (r, s) => {
     const d = `@@CODE${e}@@`;
-    return u[d] = i, e++, d;
+    return u[d] = s, e++, d;
   }), { text: a, map: u };
 }
 function H(a = "", u = {}) {
@@ -29,7 +29,7 @@ function H(a = "", u = {}) {
 }
 function G(a, u = !1) {
   try {
-    return Ce.renderToString(a, {
+    return je.renderToString(a, {
       throwOnError: !1,
       displayMode: u,
       output: "html"
@@ -38,32 +38,32 @@ function G(a, u = !1) {
     return `<code class="katex-error">${P(a)}</code>`;
   }
 }
-function je(a = "") {
+function Me(a = "") {
   const u = [], e = /(\w+)=(".*?"|'.*?'|[^\s"']+)/g;
   let r;
   for (; (r = e.exec(a)) !== null; ) {
-    const i = r[1];
+    const s = r[1];
     let d = r[2];
-    (d.startsWith('"') && d.endsWith('"') || d.startsWith("'") && d.endsWith("'")) && (d = d.slice(1, -1)), u.push(`${i}="${P(d)}"`);
+    (d.startsWith('"') && d.endsWith('"') || d.startsWith("'") && d.endsWith("'")) && (d = d.slice(1, -1)), u.push(`${s}="${P(d)}"`);
   }
   return u.join(" ");
 }
 function j(a, u, e) {
   if (a.length === 0) return;
   let r = a.join(`
-`), { text: i, map: d } = ee(r), { text: f, map: c } = te(i), b = P(f).replace(
+`), { text: s, map: d } = ee(r), { text: f, map: c } = te(s), m = P(f).replace(
     new RegExp("(?<!\\$)\\$(?!\\$)(.+?)(?<!\\$)\\$(?!\\$)", "g"),
     (v, x) => G(x.trim(), !1)
   );
-  b = b.replace(/\[\^(.+?)\]\((.+?)\)/g, (v, x, A) => {
+  m = m.replace(/\[\^(.+?)\]\((.+?)\)/g, (v, x, A) => {
     const E = x.trim() || `inline-footnote-${Object.keys(e).length + 1}`;
     return e[E] = P(A), `<sup id="ref-${E}"><a href="#footnote-${E}">${E}</a></sup>`;
   }).replace(/!\[([^\]]*)\]\(([^)]+)\)(?:\{([^}]*)\})?/g, (v, x, A, E) => {
-    const T = E ? " " + je(E) : "";
+    const T = E ? " " + Me(E) : "";
     return `<img alt="${P(x)}" src="${P(A)}"${T} />`;
-  }).replace(/\[([^\]]+?)\]\(([^)]+)\)/g, (v, x, A) => `<a href="${P(A)}" target="_blank">${P(x)}</a>`).replace(/\*\*\*(.+?)\*\*\*/g, "<strong><em>$1</em></strong>").replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\*(.+?)\*/g, "<em>$1</em>").replace(/~~(.+?)~~/g, "<del>$1</del>").replace(/\[\^(.+?)\]/g, (v, x) => `<sup id="ref-${x}"><a href="#ref-${x}">${x}</a></sup>`), b = b.replace(/\n/g, "<br />"), b = H(b, c), b = Z(b, d), u.push(`<p>${b}</p>`), a.length = 0;
+  }).replace(/\[([^\]]+?)\]\(([^)]+)\)/g, (v, x, A) => `<a href="${P(A)}" target="_blank">${P(x)}</a>`).replace(/\*\*\*(.+?)\*\*\*/g, "<strong><em>$1</em></strong>").replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\*(.+?)\*/g, "<em>$1</em>").replace(/~~(.+?)~~/g, "<del>$1</del>").replace(/\[\^(.+?)\]/g, (v, x) => `<sup id="ref-${x}"><a href="#ref-${x}">${x}</a></sup>`), m = m.replace(/\n/g, "<br />"), m = H(m, c), m = Z(m, d), u.push(`<p>${m}</p>`), a.length = 0;
 }
-function Me(a, u) {
+function de(a, u) {
   for (; u.length > 0; ) {
     const { tag: e } = u.pop();
     a.push(`</${e}>`);
@@ -72,17 +72,16 @@ function Me(a, u) {
 function ze(a, u, e) {
   const r = a.match(/^(\s*)([-*]|\d+\.)\s+(.*)/);
   if (!r) return !1;
-  const i = r[1].length, d = r[2], f = r[3], c = Math.floor(i / 4), b = /^\d+\./.test(d) ? "ol" : "ul";
+  const s = r[1].length, d = r[2], f = r[3], c = Math.floor(s / 2), m = /^\d+\./.test(d) ? "ol" : "ul";
   for (; e.length > c + 1; ) {
     const { tag: F } = e.pop();
     u.push(`</${F}>`);
   }
-  if (e.length === 0 || c >= e.length) {
-    if (e.length > 0 && e[e.length - 1].tag !== b) {
-      const { tag: F } = e.pop();
-      u.push(`</${F}>`);
-    }
-    e.push({ tag: b, indent: i }), u.push(`<${b}>`);
+  if (e.length <= c)
+    e.length > 0 && e[e.length - 1].tag, e.push({ tag: m, indent: s }), u.push(`<${m}>`);
+  else if (e[e.length - 1].tag !== m) {
+    const { tag: F } = e.pop();
+    u.push(`</${F}>`), e.push({ tag: m, indent: s }), u.push(`<${m}>`);
   }
   const { text: v, map: x } = ee(f), { text: A, map: E } = te(v), T = A.match(/^\[( |x|X)\]\s+(.*)/);
   if (T) {
@@ -104,26 +103,26 @@ function Le() {
 function Oe(a) {
   W && M.push(a.trim());
 }
-function de(a) {
+function fe(a) {
   if (!W || M.length === 0) return;
   const u = M[0].split("|").map((r) => r.trim()).filter((r) => r !== ""), e = [];
   if (M.length > 1) {
-    const r = M[1].split("|").map((i) => i.trim()).filter((i) => i !== "");
-    for (const i of r)
-      /^:-+:$/.test(i) ? e.push("center") : /^-+:$/.test(i) ? e.push("right") : /^:-+$/.test(i) ? e.push("left") : e.push("");
+    const r = M[1].split("|").map((s) => s.trim()).filter((s) => s !== "");
+    for (const s of r)
+      /^:-+:$/.test(s) ? e.push("center") : /^-+:$/.test(s) ? e.push("right") : /^:-+$/.test(s) ? e.push("left") : e.push("");
   }
   a.push("<table>"), a.push("<thead><tr>");
   for (let r = 0; r < u.length; r++) {
-    const i = e[r] ? ` style="text-align:${e[r]}"` : "";
-    a.push(`<th${i}>${P(u[r])}</th>`);
+    const s = e[r] ? ` style="text-align:${e[r]}"` : "";
+    a.push(`<th${s}>${P(u[r])}</th>`);
   }
   a.push("</tr></thead><tbody>");
   for (let r = 2; r < M.length; r++) {
-    const i = M[r].split("|").map((d) => d.trim()).filter((d) => d !== "");
+    const s = M[r].split("|").map((d) => d.trim()).filter((d) => d !== "");
     a.push("<tr>");
     for (let d = 0; d < u.length; d++) {
       const f = e[d] ? ` style="text-align:${e[d]}"` : "";
-      a.push(`<td${f}>${P(i[d] || "")}</td>`);
+      a.push(`<td${f}>${P(s[d] || "")}</td>`);
     }
     a.push("</tr>");
   }
@@ -133,7 +132,7 @@ function se() {
   return W;
 }
 let le = !1, O = 0;
-function _e(a) {
+function Pe(a) {
   if (O > 0) {
     for (let u = 0; u < O; u++)
       a.push("</blockquote>");
@@ -143,23 +142,23 @@ function _e(a) {
 function Ie(a, u) {
   const e = a.match(/^(\s*>+\s*)(.*)/);
   if (!e)
-    return le && _e(u), !1;
-  const i = e[1].replace(/\s/g, "").length, d = e[2].trim();
-  if (i !== O) {
-    if (i > O)
-      for (let f = O; f < i; f++)
+    return le && Pe(u), !1;
+  const s = e[1].replace(/\s/g, "").length, d = e[2].trim();
+  if (s !== O) {
+    if (s > O)
+      for (let f = O; f < s; f++)
         u.push("<blockquote>");
     else
-      for (let f = O; f > i; f--)
+      for (let f = O; f > s; f--)
         u.push("</blockquote>");
-    O = i;
+    O = s;
   }
   if (d) {
-    let { text: f, map: c } = ee(d), { text: h, map: b } = te(f), v = P(h);
+    let { text: f, map: c } = ee(d), { text: h, map: m } = te(f), v = P(h);
     v = v.replace(
       new RegExp("(?<!\\$)\\$(?!\\$)(.+?)(?<!\\$)\\$(?!\\$)", "g"),
       (x, A) => G(A, !1)
-    ), v = H(v, b), v = Z(v, c), u.push(`<p>${v}</p>`);
+    ), v = H(v, m), v = Z(v, c), u.push(`<p>${v}</p>`);
   }
   return le = !0, !0;
 }
@@ -167,19 +166,19 @@ function De(a, u) {
   const e = a.trim().match(/^(#{1,5})\s+(.*)/);
   if (!e) return !1;
   const r = e[1].length;
-  let i = e[2], { text: d, map: f } = ee(i), { text: c, map: h } = te(d), b = P(c);
-  return b = b.replace(
+  let s = e[2], { text: d, map: f } = ee(s), { text: c, map: h } = te(d), m = P(c);
+  return m = m.replace(
     new RegExp("(?<!\\$)\\$(?!\\$)(.+?)(?<!\\$)\\$(?!\\$)", "g"),
     (v, x) => G(x, !1)
-  ), b = H(b, h), b = Z(b, f), u.push(`<h${r}>${b}</h${r}>`), !0;
+  ), m = H(m, h), m = Z(m, f), u.push(`<h${r}>${m}</h${r}>`), !0;
 }
-var fe = typeof globalThis < "u" ? globalThis : typeof window < "u" ? window : typeof global < "u" ? global : typeof self < "u" ? self : {};
+var he = typeof globalThis < "u" ? globalThis : typeof window < "u" ? window : typeof global < "u" ? global : typeof self < "u" ? self : {};
 function Re(a) {
   return a && a.__esModule && Object.prototype.hasOwnProperty.call(a, "default") ? a.default : a;
 }
-var ie = { exports: {} }, he;
+var ie = { exports: {} }, me;
 function qe() {
-  return he || (he = 1, function(a) {
+  return me || (me = 1, function(a) {
     var u = typeof window < "u" ? window : typeof WorkerGlobalScope < "u" && self instanceof WorkerGlobalScope ? self : {};
     /**
      * Prism: Lightweight, robust, elegant syntax highlighting
@@ -190,7 +189,7 @@ function qe() {
      * @public
      */
     var e = function(r) {
-      var i = /(?:^|\s)lang(?:uage)?-([\w-]+)(?=\s|$)/i, d = 0, f = {}, c = {
+      var s = /(?:^|\s)lang(?:uage)?-([\w-]+)(?=\s|$)/i, d = 0, f = {}, c = {
         /**
          * By default, Prism will attempt to highlight all code elements (by calling {@link Prism.highlightAll}) on the
          * current page after the page finished loading. This might be a problem if e.g. you wanted to asynchronously load
@@ -286,26 +285,26 @@ function qe() {
            * @returns {T}
            * @template T
            */
-          clone: function n(t, s) {
-            s = s || {};
+          clone: function n(t, i) {
+            i = i || {};
             var l, o;
             switch (c.util.type(t)) {
               case "Object":
-                if (o = c.util.objId(t), s[o])
-                  return s[o];
+                if (o = c.util.objId(t), i[o])
+                  return i[o];
                 l = /** @type {Record<string, any>} */
-                {}, s[o] = l;
+                {}, i[o] = l;
                 for (var p in t)
-                  t.hasOwnProperty(p) && (l[p] = n(t[p], s));
+                  t.hasOwnProperty(p) && (l[p] = n(t[p], i));
                 return (
                   /** @type {any} */
                   l
                 );
               case "Array":
-                return o = c.util.objId(t), s[o] ? s[o] : (l = [], s[o] = l, /** @type {Array} */
+                return o = c.util.objId(t), i[o] ? i[o] : (l = [], i[o] = l, /** @type {Array} */
                 /** @type {any} */
-                t.forEach(function(m, g) {
-                  l[g] = n(m, s);
+                t.forEach(function(b, g) {
+                  l[g] = n(b, i);
                 }), /** @type {any} */
                 l);
               default:
@@ -322,7 +321,7 @@ function qe() {
            */
           getLanguage: function(n) {
             for (; n; ) {
-              var t = i.exec(n.className);
+              var t = s.exec(n.className);
               if (t)
                 return t[1].toLowerCase();
               n = n.parentElement;
@@ -337,7 +336,7 @@ function qe() {
            * @returns {void}
            */
           setLanguage: function(n, t) {
-            n.className = n.className.replace(RegExp(i, "gi"), ""), n.classList.add("language-" + t);
+            n.className = n.className.replace(RegExp(s, "gi"), ""), n.classList.add("language-" + t);
           },
           /**
            * Returns the script element that is currently executing.
@@ -360,9 +359,9 @@ function qe() {
               var n = (/at [^(\r\n]*\((.*):[^:]+:[^:]+\)$/i.exec(l.stack) || [])[1];
               if (n) {
                 var t = document.getElementsByTagName("script");
-                for (var s in t)
-                  if (t[s].src == n)
-                    return t[s];
+                for (var i in t)
+                  if (t[i].src == n)
+                    return t[i];
               }
               return null;
             }
@@ -386,7 +385,7 @@ function qe() {
            * @param {boolean} [defaultActivation=false]
            * @returns {boolean}
            */
-          isActive: function(n, t, s) {
+          isActive: function(n, t, i) {
             for (var l = "no-" + t; n; ) {
               var o = n.classList;
               if (o.contains(t))
@@ -395,7 +394,7 @@ function qe() {
                 return !1;
               n = n.parentElement;
             }
-            return !!s;
+            return !!i;
           }
         },
         /**
@@ -442,10 +441,10 @@ function qe() {
            * });
            */
           extend: function(n, t) {
-            var s = c.util.clone(c.languages[n]);
+            var i = c.util.clone(c.languages[n]);
             for (var l in t)
-              s[l] = t[l];
-            return s;
+              i[l] = t[l];
+            return i;
           },
           /**
            * Inserts tokens _before_ another token in a language definition or any other grammar.
@@ -522,16 +521,16 @@ function qe() {
            * @returns {Grammar} The new grammar object.
            * @public
            */
-          insertBefore: function(n, t, s, l) {
+          insertBefore: function(n, t, i, l) {
             l = l || /** @type {any} */
             c.languages;
             var o = l[n], p = {};
-            for (var m in o)
-              if (o.hasOwnProperty(m)) {
-                if (m == t)
-                  for (var g in s)
-                    s.hasOwnProperty(g) && (p[g] = s[g]);
-                s.hasOwnProperty(m) || (p[m] = o[m]);
+            for (var b in o)
+              if (o.hasOwnProperty(b)) {
+                if (b == t)
+                  for (var g in i)
+                    i.hasOwnProperty(g) && (p[g] = i[g]);
+                i.hasOwnProperty(b) || (p[b] = o[b]);
               }
             var $ = l[n];
             return l[n] = p, c.languages.DFS(c.languages, function(k, z) {
@@ -539,14 +538,14 @@ function qe() {
             }), p;
           },
           // Traverse a language definition with Depth First Search
-          DFS: function n(t, s, l, o) {
+          DFS: function n(t, i, l, o) {
             o = o || {};
             var p = c.util.objId;
-            for (var m in t)
-              if (t.hasOwnProperty(m)) {
-                s.call(t, m, t[m], l || m);
-                var g = t[m], $ = c.util.type(g);
-                $ === "Object" && !o[p(g)] ? (o[p(g)] = !0, n(g, s, null, o)) : $ === "Array" && !o[p(g)] && (o[p(g)] = !0, n(g, s, m, o));
+            for (var b in t)
+              if (t.hasOwnProperty(b)) {
+                i.call(t, b, t[b], l || b);
+                var g = t[b], $ = c.util.type(g);
+                $ === "Object" && !o[p(g)] ? (o[p(g)] = !0, n(g, i, null, o)) : $ === "Array" && !o[p(g)] && (o[p(g)] = !0, n(g, i, b, o));
               }
           }
         },
@@ -581,9 +580,9 @@ function qe() {
          * @memberof Prism
          * @public
          */
-        highlightAllUnder: function(n, t, s) {
+        highlightAllUnder: function(n, t, i) {
           var l = {
-            callback: s,
+            callback: i,
             container: n,
             selector: 'code[class*="language-"], [class*="language-"] code, code[class*="lang-"], [class*="lang-"] code'
           };
@@ -619,22 +618,22 @@ function qe() {
          * @memberof Prism
          * @public
          */
-        highlightElement: function(n, t, s) {
+        highlightElement: function(n, t, i) {
           var l = c.util.getLanguage(n), o = c.languages[l];
           c.util.setLanguage(n, l);
           var p = n.parentElement;
           p && p.nodeName.toLowerCase() === "pre" && c.util.setLanguage(p, l);
-          var m = n.textContent, g = {
+          var b = n.textContent, g = {
             element: n,
             language: l,
             grammar: o,
-            code: m
+            code: b
           };
           function $(z) {
-            g.highlightedCode = z, c.hooks.run("before-insert", g), g.element.innerHTML = g.highlightedCode, c.hooks.run("after-highlight", g), c.hooks.run("complete", g), s && s.call(g.element);
+            g.highlightedCode = z, c.hooks.run("before-insert", g), g.element.innerHTML = g.highlightedCode, c.hooks.run("after-highlight", g), c.hooks.run("complete", g), i && i.call(g.element);
           }
           if (c.hooks.run("before-sanity-check", g), p = g.element.parentElement, p && p.nodeName.toLowerCase() === "pre" && !p.hasAttribute("tabindex") && p.setAttribute("tabindex", "0"), !g.code) {
-            c.hooks.run("complete", g), s && s.call(g.element);
+            c.hooks.run("complete", g), i && i.call(g.element);
             return;
           }
           if (c.hooks.run("before-highlight", g), !g.grammar) {
@@ -673,11 +672,11 @@ function qe() {
          * @example
          * Prism.highlight('var foo = true;', Prism.languages.javascript, 'javascript');
          */
-        highlight: function(n, t, s) {
+        highlight: function(n, t, i) {
           var l = {
             code: n,
             grammar: t,
-            language: s
+            language: i
           };
           if (c.hooks.run("before-tokenize", l), !l.grammar)
             throw new Error('The language "' + l.language + '" has no grammar.');
@@ -708,10 +707,10 @@ function qe() {
          * });
          */
         tokenize: function(n, t) {
-          var s = t.rest;
-          if (s) {
-            for (var l in s)
-              t[l] = s[l];
+          var i = t.rest;
+          if (i) {
+            for (var l in i)
+              t[l] = i[l];
             delete t.rest;
           }
           var o = new x();
@@ -737,8 +736,8 @@ function qe() {
            * @public
            */
           add: function(n, t) {
-            var s = c.hooks.all;
-            s[n] = s[n] || [], s[n].push(t);
+            var i = c.hooks.all;
+            i[n] = i[n] || [], i[n].push(t);
           },
           /**
            * Runs a hook invoking all registered callbacks with the given environment variables.
@@ -750,62 +749,62 @@ function qe() {
            * @public
            */
           run: function(n, t) {
-            var s = c.hooks.all[n];
-            if (!(!s || !s.length))
-              for (var l = 0, o; o = s[l++]; )
+            var i = c.hooks.all[n];
+            if (!(!i || !i.length))
+              for (var l = 0, o; o = i[l++]; )
                 o(t);
           }
         },
         Token: h
       };
       r.Prism = c;
-      function h(n, t, s, l) {
-        this.type = n, this.content = t, this.alias = s, this.length = (l || "").length | 0;
+      function h(n, t, i, l) {
+        this.type = n, this.content = t, this.alias = i, this.length = (l || "").length | 0;
       }
-      h.stringify = function n(t, s) {
+      h.stringify = function n(t, i) {
         if (typeof t == "string")
           return t;
         if (Array.isArray(t)) {
           var l = "";
           return t.forEach(function($) {
-            l += n($, s);
+            l += n($, i);
           }), l;
         }
         var o = {
           type: t.type,
-          content: n(t.content, s),
+          content: n(t.content, i),
           tag: "span",
           classes: ["token", t.type],
           attributes: {},
-          language: s
+          language: i
         }, p = t.alias;
         p && (Array.isArray(p) ? Array.prototype.push.apply(o.classes, p) : o.classes.push(p)), c.hooks.run("wrap", o);
-        var m = "";
+        var b = "";
         for (var g in o.attributes)
-          m += " " + g + '="' + (o.attributes[g] || "").replace(/"/g, "&quot;") + '"';
-        return "<" + o.tag + ' class="' + o.classes.join(" ") + '"' + m + ">" + o.content + "</" + o.tag + ">";
+          b += " " + g + '="' + (o.attributes[g] || "").replace(/"/g, "&quot;") + '"';
+        return "<" + o.tag + ' class="' + o.classes.join(" ") + '"' + b + ">" + o.content + "</" + o.tag + ">";
       };
-      function b(n, t, s, l) {
+      function m(n, t, i, l) {
         n.lastIndex = t;
-        var o = n.exec(s);
+        var o = n.exec(i);
         if (o && l && o[1]) {
           var p = o[1].length;
           o.index += p, o[0] = o[0].slice(p);
         }
         return o;
       }
-      function v(n, t, s, l, o, p) {
-        for (var m in s)
-          if (!(!s.hasOwnProperty(m) || !s[m])) {
-            var g = s[m];
+      function v(n, t, i, l, o, p) {
+        for (var b in i)
+          if (!(!i.hasOwnProperty(b) || !i[b])) {
+            var g = i[b];
             g = Array.isArray(g) ? g : [g];
             for (var $ = 0; $ < g.length; ++$) {
-              if (p && p.cause == m + "," + $)
+              if (p && p.cause == b + "," + $)
                 return;
-              var k = g[$], z = k.inside, oe = !!k.lookbehind, ce = !!k.greedy, Pe = k.alias;
+              var k = g[$], z = k.inside, oe = !!k.lookbehind, ce = !!k.greedy, Ee = k.alias;
               if (ce && !k.pattern.global) {
-                var Ee = k.pattern.toString().match(/[imsuy]*$/)[0];
-                k.pattern = RegExp(k.pattern.source, Ee + "g");
+                var Se = k.pattern.toString().match(/[imsuy]*$/)[0];
+                k.pattern = RegExp(k.pattern.source, Se + "g");
               }
               for (var ge = k.pattern || k, _ = l.next, C = o; _ !== t.tail && !(p && C >= p.reach); C += _.value.length, _ = _.next) {
                 var I = _.value;
@@ -814,29 +813,29 @@ function qe() {
                 if (!(I instanceof h)) {
                   var U = 1, S;
                   if (ce) {
-                    if (S = b(ge, C, n, oe), !S || S.index >= n.length)
+                    if (S = m(ge, C, n, oe), !S || S.index >= n.length)
                       break;
-                    var N = S.index, Se = S.index + S[0].length, L = C;
+                    var N = S.index, Te = S.index + S[0].length, L = C;
                     for (L += _.value.length; N >= L; )
                       _ = _.next, L += _.value.length;
                     if (L -= _.value.length, C = L, _.value instanceof h)
                       continue;
-                    for (var D = _; D !== t.tail && (L < Se || typeof D.value == "string"); D = D.next)
+                    for (var D = _; D !== t.tail && (L < Te || typeof D.value == "string"); D = D.next)
                       U++, L += D.value.length;
                     U--, I = n.slice(C, L), S.index -= C;
-                  } else if (S = b(ge, 0, I, oe), !S)
+                  } else if (S = m(ge, 0, I, oe), !S)
                     continue;
                   var N = S.index, J = S[0], ne = I.slice(0, N), pe = I.slice(N + J.length), ae = C + I.length;
                   p && ae > p.reach && (p.reach = ae);
                   var X = _.prev;
                   ne && (X = A(t, X, ne), C += ne.length), E(t, X, U);
-                  var Te = new h(m, z ? c.tokenize(J, z) : J, Pe, J);
-                  if (_ = A(t, X, Te), pe && A(t, _, pe), U > 1) {
+                  var Ce = new h(b, z ? c.tokenize(J, z) : J, Ee, J);
+                  if (_ = A(t, X, Ce), pe && A(t, _, pe), U > 1) {
                     var re = {
-                      cause: m + "," + $,
+                      cause: b + "," + $,
                       reach: ae
                     };
-                    v(n, t, s, _.prev, C, re), p && re.reach > p.reach && (p.reach = re.reach);
+                    v(n, t, i, _.prev, C, re), p && re.reach > p.reach && (p.reach = re.reach);
                   }
                 }
               }
@@ -847,24 +846,24 @@ function qe() {
         var n = { value: null, prev: null, next: null }, t = { value: null, prev: n, next: null };
         n.next = t, this.head = n, this.tail = t, this.length = 0;
       }
-      function A(n, t, s) {
-        var l = t.next, o = { value: s, prev: t, next: l };
+      function A(n, t, i) {
+        var l = t.next, o = { value: i, prev: t, next: l };
         return t.next = o, l.prev = o, n.length++, o;
       }
-      function E(n, t, s) {
-        for (var l = t.next, o = 0; o < s && l !== n.tail; o++)
+      function E(n, t, i) {
+        for (var l = t.next, o = 0; o < i && l !== n.tail; o++)
           l = l.next;
         t.next = l, l.prev = t, n.length -= o;
       }
       function T(n) {
-        for (var t = [], s = n.head.next; s !== n.tail; )
-          t.push(s.value), s = s.next;
+        for (var t = [], i = n.head.next; i !== n.tail; )
+          t.push(i.value), i = i.next;
         return t;
       }
       if (!r.document)
         return r.addEventListener && (c.disableWorkerMessageHandler || r.addEventListener("message", function(n) {
-          var t = JSON.parse(n.data), s = t.language, l = t.code, o = t.immediateClose;
-          r.postMessage(c.highlight(l, c.languages[s], s)), o && r.close();
+          var t = JSON.parse(n.data), i = t.language, l = t.code, o = t.immediateClose;
+          r.postMessage(c.highlight(l, c.languages[i], i)), o && r.close();
         }, !1)), c;
       var F = c.util.currentScript();
       F && (c.filename = F.src, F.hasAttribute("data-manual") && (c.manual = !0));
@@ -877,7 +876,7 @@ function qe() {
       }
       return c;
     }(u);
-    a.exports && (a.exports = e), typeof fe < "u" && (fe.Prism = e), e.languages.markup = {
+    a.exports && (a.exports = e), typeof he < "u" && (he.Prism = e), e.languages.markup = {
       comment: {
         pattern: /<!--(?:(?!<!--)[\s\S])*?-->/,
         greedy: !0
@@ -968,7 +967,7 @@ function qe() {
        * @example
        * addInlined('style', 'css');
        */
-      value: function(i, d) {
+      value: function(s, d) {
         var f = {};
         f["language-" + d] = {
           pattern: /(^<!\[CDATA\[)[\s\S]+?(?=\]\]>$)/i,
@@ -986,9 +985,9 @@ function qe() {
           inside: e.languages[d]
         };
         var h = {};
-        h[i] = {
+        h[s] = {
           pattern: RegExp(/(<__[^>]*>)(?:<!\[CDATA\[(?:[^\]]|\](?!\]>))*\]\]>|(?!<!\[CDATA\[)[\s\S])*?(?=<\/__>)/.source.replace(/__/g, function() {
-            return i;
+            return s;
           }), "i"),
           lookbehind: !0,
           greedy: !0,
@@ -1007,7 +1006,7 @@ function qe() {
        * @example
        * addAttribute('style', 'css');
        */
-      value: function(r, i) {
+      value: function(r, s) {
         e.languages.markup.tag.inside["special-attr"].push({
           pattern: RegExp(
             /(^|["'\s])/.source + "(?:" + r + ")" + /\s*=\s*(?:"[^"]*"|'[^']*'|[^\s'">=]+(?=[\s>]))/.source,
@@ -1022,8 +1021,8 @@ function qe() {
                 value: {
                   pattern: /(^=\s*(["']|(?!["'])))\S[\s\S]*(?=\2$)/,
                   lookbehind: !0,
-                  alias: [i, "language-" + i],
-                  inside: e.languages[i]
+                  alias: [s, "language-" + s],
+                  inside: e.languages[s]
                 },
                 punctuation: [
                   {
@@ -1038,11 +1037,11 @@ function qe() {
         });
       }
     }), e.languages.html = e.languages.markup, e.languages.mathml = e.languages.markup, e.languages.svg = e.languages.markup, e.languages.xml = e.languages.extend("markup", {}), e.languages.ssml = e.languages.xml, e.languages.atom = e.languages.xml, e.languages.rss = e.languages.xml, function(r) {
-      var i = /(?:"(?:\\(?:\r\n|[\s\S])|[^"\\\r\n])*"|'(?:\\(?:\r\n|[\s\S])|[^'\\\r\n])*')/;
+      var s = /(?:"(?:\\(?:\r\n|[\s\S])|[^"\\\r\n])*"|'(?:\\(?:\r\n|[\s\S])|[^'\\\r\n])*')/;
       r.languages.css = {
         comment: /\/\*[\s\S]*?\*\//,
         atrule: {
-          pattern: RegExp("@[\\w-](?:" + /[^;{\s"']|\s+(?!\s)/.source + "|" + i.source + ")*?" + /(?:;|(?=\s*\{))/.source),
+          pattern: RegExp("@[\\w-](?:" + /[^;{\s"']|\s+(?!\s)/.source + "|" + s.source + ")*?" + /(?:;|(?=\s*\{))/.source),
           inside: {
             rule: /^@[\w-]+/,
             "selector-function-argument": {
@@ -1059,23 +1058,23 @@ function qe() {
         },
         url: {
           // https://drafts.csswg.org/css-values-3/#urls
-          pattern: RegExp("\\burl\\((?:" + i.source + "|" + /(?:[^\\\r\n()"']|\\[\s\S])*/.source + ")\\)", "i"),
+          pattern: RegExp("\\burl\\((?:" + s.source + "|" + /(?:[^\\\r\n()"']|\\[\s\S])*/.source + ")\\)", "i"),
           greedy: !0,
           inside: {
             function: /^url/i,
             punctuation: /^\(|\)$/,
             string: {
-              pattern: RegExp("^" + i.source + "$"),
+              pattern: RegExp("^" + s.source + "$"),
               alias: "url"
             }
           }
         },
         selector: {
-          pattern: RegExp(`(^|[{}\\s])[^{}\\s](?:[^{};"'\\s]|\\s+(?![\\s{])|` + i.source + ")*(?=\\s*\\{)"),
+          pattern: RegExp(`(^|[{}\\s])[^{}\\s](?:[^{};"'\\s]|\\s+(?![\\s{])|` + s.source + ")*(?=\\s*\\{)"),
           lookbehind: !0
         },
         string: {
-          pattern: i,
+          pattern: s,
           greedy: !0
         },
         property: {
@@ -1255,7 +1254,7 @@ function qe() {
       if (typeof e > "u" || typeof document > "u")
         return;
       Element.prototype.matches || (Element.prototype.matches = Element.prototype.msMatchesSelector || Element.prototype.webkitMatchesSelector);
-      var r = "Loading…", i = function(F, y) {
+      var r = "Loading…", s = function(F, y) {
         return "✖ Error " + F + " while fetching file: " + y;
       }, d = "✖ Error: File does not exist or is empty", f = {
         js: "javascript",
@@ -1267,11 +1266,11 @@ function qe() {
         bat: "batch",
         h: "c",
         tex: "latex"
-      }, c = "data-src-status", h = "loading", b = "loaded", v = "failed", x = "pre[data-src]:not([" + c + '="' + b + '"]):not([' + c + '="' + h + '"])';
+      }, c = "data-src-status", h = "loading", m = "loaded", v = "failed", x = "pre[data-src]:not([" + c + '="' + m + '"]):not([' + c + '="' + h + '"])';
       function A(F, y, w) {
         var n = new XMLHttpRequest();
         n.open("GET", F, !0), n.onreadystatechange = function() {
-          n.readyState == 4 && (n.status < 400 && n.responseText ? y(n.responseText) : n.status >= 400 ? w(i(n.status, n.statusText)) : w(d));
+          n.readyState == 4 && (n.status < 400 && n.responseText ? y(n.responseText) : n.status >= 400 ? w(s(n.status, n.statusText)) : w(d));
         }, n.send(null);
       }
       function E(F) {
@@ -1294,19 +1293,19 @@ function qe() {
           w.textContent = r;
           var n = y.getAttribute("data-src"), t = F.language;
           if (t === "none") {
-            var s = (/\.(\w+)$/.exec(n) || [, "none"])[1];
-            t = f[s] || s;
+            var i = (/\.(\w+)$/.exec(n) || [, "none"])[1];
+            t = f[i] || i;
           }
           e.util.setLanguage(w, t), e.util.setLanguage(y, t);
           var l = e.plugins.autoloader;
           l && l.loadLanguages(t), A(
             n,
             function(o) {
-              y.setAttribute(c, b);
+              y.setAttribute(c, m);
               var p = E(y.getAttribute("data-range"));
               if (p) {
-                var m = o.split(/\r\n?|\n/g), g = p[0], $ = p[1] == null ? m.length : p[1];
-                g < 0 && (g += m.length), g = Math.max(0, Math.min(g - 1, m.length)), $ < 0 && ($ += m.length), $ = Math.max(0, Math.min($, m.length)), o = m.slice(g, $).join(`
+                var b = o.split(/\r\n?|\n/g), g = p[0], $ = p[1] == null ? b.length : p[1];
+                g < 0 && (g += b.length), g = Math.max(0, Math.min(g - 1, b.length)), $ < 0 && ($ += b.length), $ = Math.max(0, Math.min($, b.length)), o = b.slice(g, $).join(`
 `), y.hasAttribute("data-start") || y.setAttribute("data-start", String(g + 1));
               }
               w.textContent = o, e.highlightElement(w);
@@ -1475,9 +1474,9 @@ Prism.languages.markup && (Prism.languages.markup.tag.addInlined("script", "java
   "javascript"
 ));
 Prism.languages.js = Prism.languages.javascript;
-var me = {}, be;
+var be = {}, Fe;
 function Ze() {
-  return be || (be = 1, function(a) {
+  return Fe || (Fe = 1, function(a) {
     a.languages.typescript = a.languages.extend("javascript", {
       "class-name": {
         pattern: /(\b(?:class|extends|implements|instanceof|interface|new|type)\s+)(?!keyof\b)(?!\s)[_$a-zA-Z\xA0-\uFFFF](?:(?!\s)[$\w\xA0-\uFFFF])*(?:\s*<(?:[^<>]|<(?:[^<>]|<[^<>]*>)*>)*>)?/,
@@ -1521,12 +1520,12 @@ function Ze() {
         }
       }
     }), a.languages.ts = a.languages.typescript;
-  }(Prism)), me;
+  }(Prism)), be;
 }
 Ze();
-var Fe = {}, ye;
+var ye = {}, xe;
 function He() {
-  return ye || (ye = 1, Prism.languages.python = {
+  return xe || (xe = 1, Prism.languages.python = {
     comment: {
       pattern: /(^|[^\\])#.*/,
       lookbehind: !0,
@@ -1586,7 +1585,7 @@ function He() {
     number: /\b0(?:b(?:_?[01])+|o(?:_?[0-7])+|x(?:_?[a-f0-9])+)\b|(?:\b\d+(?:_\d+)*(?:\.(?:\d+(?:_\d+)*)?)?|\B\.\d+(?:_\d+)*)(?:e[+-]?\d+(?:_\d+)*)?j?(?!\w)/i,
     operator: /[-+%=]=?|!=|:=|\*\*?=?|\/\/?=?|<[<=>]?|>[=>]?|[&|^~]/,
     punctuation: /[{}[\];(),.:]/
-  }, Prism.languages.python["string-interpolation"].inside.interpolation.inside.rest = Prism.languages.python, Prism.languages.py = Prism.languages.python), Fe;
+  }, Prism.languages.python["string-interpolation"].inside.interpolation.inside.rest = Prism.languages.python, Prism.languages.py = Prism.languages.python), ye;
 }
 He();
 (function(a) {
@@ -1746,13 +1745,13 @@ Object.defineProperty(Prism.languages.markup.tag, "addInlined", {
       lookbehind: !0,
       inside: Prism.languages[e]
     }, r.cdata = /^<!\[CDATA\[|\]\]>$/i;
-    var i = {
+    var s = {
       "included-cdata": {
         pattern: /<!\[CDATA\[[\s\S]*?\]\]>/i,
         inside: r
       }
     };
-    i["language-" + e] = {
+    s["language-" + e] = {
       pattern: /[\s\S]+/,
       inside: Prism.languages[e]
     };
@@ -1763,7 +1762,7 @@ Object.defineProperty(Prism.languages.markup.tag, "addInlined", {
       }), "i"),
       lookbehind: !0,
       greedy: !0,
-      inside: i
+      inside: s
     }, Prism.languages.insertBefore("markup", "cdata", d);
   }
 });
@@ -1818,17 +1817,17 @@ Prism.languages.ssml = Prism.languages.xml;
 Prism.languages.atom = Prism.languages.xml;
 Prism.languages.rss = Prism.languages.xml;
 let R = !1, Y = "text", K = [];
-function xe(a, u) {
+function ve(a, u) {
   const e = a.trim();
   if (!/^```/.test(e)) return !1;
   if (R) {
     const r = K.join(`
-`), i = ue.highlight(
+`), s = ue.highlight(
       r,
       ue.languages[Y] || ue.languages.text,
       Y
     );
-    u.push(`<pre class="language-${Y}"><code>${i}</code></pre>`), R = !1, K = [];
+    u.push(`<pre class="language-${Y}"><code>${s}</code></pre>`), R = !1, K = [];
   } else
     R = !0, Y = e.slice(3).trim() || "text", K = [];
   return !0;
@@ -1836,25 +1835,25 @@ function xe(a, u) {
 function We(a) {
   return R ? (K.push(a), !0) : !1;
 }
-function ve() {
+function $e() {
   return R;
 }
 let q = !1, Q = [];
-function $e(a, u) {
+function we(a, u) {
   return a.trim() !== "$$" ? !1 : (q ? (u.push(G(Q.join(`
 `), !0)), q = !1, Q = []) : (q = !0, Q = []), !0);
 }
 function Ge(a) {
   return q ? (Q.push(a), !0) : !1;
 }
-function we() {
+function Ae() {
   return q;
 }
 let B = !1, V = [];
-function Ae(a, u) {
+function ke(a, u) {
   const e = a.trim();
   return e === ":::three" ? (B = !0, V = [], !0) : e === ":::" && B ? (u.push(
-    `<div class="three-js-container" data-objects='${JSON.stringify(V)}'></div>`
+    `<div class="three-preview" data-objects='${JSON.stringify(V)}'></div>`
   ), B = !1, V = [], !0) : !1;
 }
 function Ue(a) {
@@ -1864,14 +1863,14 @@ function Ue(a) {
   );
   if (e) {
     const r = e[2].toLowerCase();
-    let i = e[3].trim();
-    !i.startsWith("0x") && i.startsWith("#") ? i = "0x" + i.substring(1) : !i.startsWith("0x") && !isNaN(parseInt(i)) && (i = "0x" + parseInt(i).toString(16));
+    let s = e[3].trim();
+    !s.startsWith("0x") && s.startsWith("#") ? s = "0x" + s.substring(1) : !s.startsWith("0x") && !isNaN(parseInt(s)) && (s = "0x" + parseInt(s).toString(16));
     const d = parseFloat(e[4]) || 1;
-    V.push({ type: r, color: i, size: d });
+    V.push({ type: r, color: s, size: d });
   }
   return !0;
 }
-function ke() {
+function _e() {
   return B;
 }
 function Ne(a, u, e) {
@@ -1890,65 +1889,65 @@ function Ne(a, u, e) {
 }
 function Xe(a) {
   const u = a.split(`
-`), e = [], r = [], i = [], d = {}, f = {};
+`), e = [], r = [], s = [], d = {}, f = {};
   for (let c = 0; c < u.length; c++) {
     let h = u[c];
     if (/^(\*\s*\*\s*\*|---|___)\s*$/.test(h)) {
-      j(i, e, f), e.push("<hr />");
+      j(s, e, f), e.push("<hr />");
       continue;
     }
-    if (xe(h, e)) {
-      j(i, e, f);
+    if (ve(h, e)) {
+      j(s, e, f);
       continue;
     }
-    if (ve()) {
+    if ($e()) {
       We(h);
       continue;
     }
-    if ($e(h, e)) {
-      j(i, e, f);
+    if (we(h, e)) {
+      j(s, e, f);
       continue;
     }
-    if (we()) {
+    if (Ae()) {
       Ge(h);
       continue;
     }
-    if (Ae(h, e)) {
-      j(i, e, f);
+    if (ke(h, e)) {
+      j(s, e, f);
       continue;
     }
-    if (ke()) {
+    if (_e()) {
       Ue(h);
       continue;
     }
     if (h.trim().startsWith("|")) {
-      j(i, e, f), se() || Le(), Oe(h);
+      j(s, e, f), se() || Le(), Oe(h);
       continue;
-    } else se() && de(e);
+    } else se() && fe(e);
     if (De(h, e)) {
-      j(i, e, f);
+      j(s, e, f);
       continue;
     }
     if (Ie(h, e)) {
-      j(i, e, f);
+      j(s, e, f);
       continue;
     }
     if (ze(h, e, r)) {
-      j(i, e, f);
+      j(s, e, f);
       continue;
     }
     if (h.trim() === "") {
-      j(i, e, f);
-      let b = 0, v = c + 1;
+      j(s, e, f), r.length > 0 && de(e, r);
+      let m = 0, v = c + 1;
       for (; v < u.length && u[v].trim() === ""; )
-        b++, v++;
-      for (let x = 0; x < b; x++)
+        m++, v++;
+      for (let x = 0; x < m; x++)
         e.push("<p><br /></p>");
       c = v - 1;
     } else
-      i.push(h);
+      s.push(h);
   }
-  return j(i, e, f), Me(e, r), _e(e), se() && de(e), ve() && xe("```", e), we() && $e("$$", e), ke() && Ae(":::", e), Ne(e, d, f), e.join(`
+  return j(s, e, f), de(e, r), Pe(e), se() && fe(e), $e() && ve("```", e), Ae() && we("$$", e), _e() && ke(":::", e), Ne(e, d, f), e.join(`
 `);
 }
 export {
