@@ -55,7 +55,7 @@ const emit = defineEmits(['close'])
           <div><sup id="ref-1"><a  href="#ref-1">[^1]</a></sup>: 这是脚注1的内容</div>
         </div><br></br>
 
-        <div class="footnote">
+        <div class="math">
           <h2>数学公式</h2><hr></hr>
           <div>$$</div>
           <div>数学公式</div>
@@ -74,6 +74,15 @@ const emit = defineEmits(['close'])
           <div>\```[语言名]</div>
           <div><code>代码</code></div>
           <div>\```</div>
+        </div><br></br>
+
+        <div class="table">
+          <h2>表格</h2><hr></hr>
+          <div>| 左对齐 | 居中 | 右对齐 |</div>
+          <div>|:------|:----:|-----:|</div>
+          <div>| 内容 |  内容 | 内容 |</div>
+          <div>| 内容 |  内容 | 内容 |</div>
+          <div></div>
         </div><br></br>
 
         <div class="3d">
@@ -156,6 +165,9 @@ const emit = defineEmits(['close'])
 
 .tutorial {
   font-size: 20px;
+}
+.tutorial h2 {
+  color: #dbc231;
 }
 .shortcuts {
   font-size: 20px;
