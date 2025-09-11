@@ -8,6 +8,7 @@ import PreviewPane from './components/PreviewPane.vue'
 import Toolbar from './components/Toolbar.vue'
 import HistoryPanel from './components/HistoryPanel.vue'
 import ThreePreview from './components/ThreePreview.vue'
+import InfoPanel from './components/InfoPanel.vue'
 
 import { usePdfExport } from './composables/usePdfExport'
 import { useHistory } from './composables/useHistory'
@@ -75,6 +76,18 @@ onMounted(() => {
   })
 })
 
+// 使用教程与常见快捷键展示
+const infoOpen = ref(false)
+const infoType = ref('tutorial') // 默认显示教程
+
+const openInfo = (type) => {
+  infoType.value = type
+  infoOpen.value = true
+}
+
+
+
+
 // 🔥 侧边栏控制
 const sidebarOpen = ref(false)
 const toggleSidebar = () => {
@@ -89,6 +102,8 @@ const menuItems = [
   { icon: '⚙', label: '设置', action: () => console.log('打开设置面板') },
   { icon: '📤', label: '导出 PDF', action: () => exportPdf() },
   { icon: '💾', label: '保存快照', action: () => addHistory() },
+  { icon: '💾', label: '使用教程', action: () => openInfo('tutorial') },
+  { icon: '📑', label: '常用快捷键', action: () => openInfo('shortcuts') },
 ]
 </script>
 
@@ -115,8 +130,26 @@ const menuItems = [
       'mode-markdown': viewMode === 'markdown',
       'mode-preview': viewMode === 'preview'
     }">
+
+
+      <!-- 侧边栏 -->
+      <aside class="sidebar" :class="{ open: sidebarOpen }">
+        <ul class="sidebar-list">
+          <li v-for="item in menuItems" :key="item.label" @click="item.action">
+            <span>{{ item.icon }}</span> {{ item.label }}
+          </li>
+        </ul>
+        <!-- InfoPanel -->
+        <InfoPanel
+          :type="infoType"
+          :open="infoOpen"
+          @close="infoOpen = false"
+        />
+      </aside>
+
+
       <!-- 左侧 Markdown 编辑区 -->
-      <div class="left" :class="{ full: viewMode === 'markdown' }">
+      <div class="left" v-if="viewMode === 'markdown' || viewMode === 'split'" :class="{ full: viewMode === 'markdown' }">
         <div class="card">
           <div class="part-title">Markdown 编辑区</div>
           <div class="scroll-container part-textarea">
@@ -126,7 +159,7 @@ const menuItems = [
       </div>
 
       <!-- 右侧 HTML 预览区 + 3D 预览 -->
-      <div class="right" :class="{ full: viewMode === 'preview' }">
+      <div class="right" v-if="viewMode === 'preview' || viewMode === 'split'" :class="{ full: viewMode === 'preview' }">
         <div class="card">
           <div class="part-title">HTML 预览</div>
           <div class="scroll-container part-preview">
@@ -136,22 +169,6 @@ const menuItems = [
     
       </div>
     </div>
-
-
-    <!-- 侧边栏 -->
-    <aside class="sidebar" :class="{ open: sidebarOpen }">
-      <div class="sidebar-header">
-        <h3>📂 功能菜单</h3>
-        <button class="close-btn" @click="toggleSidebar">✖</button>
-      </div>
-      <ul class="sidebar-list">
-        <li v-for="item in menuItems" :key="item.label" @click="item.action">
-          <span>{{ item.icon }}</span> {{ item.label }}
-        </li>
-      </ul>
-    </aside>
-
-    
 
     <div class="footer">MarkForge © 2025</div>
   </div>

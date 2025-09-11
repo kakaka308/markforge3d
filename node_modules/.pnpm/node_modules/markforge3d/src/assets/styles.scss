@@ -17,7 +17,7 @@
     --bg-header-dark: linear-gradient(to right, #0d1b2a, #415a77);
     --bg-menu-button: linear-gradient(to right, #D8E2DC, #fdc1b7);
     --bg-menu-button-dark: linear-gradient(to left, #0d1b2a, #415a77);
-    --bg-swiper-slide: #D8E2DC;
+    --bg-swiper-slide: #f9f2f1;
     --bg-swiper-slide-dark: #415a77;
     --bg-footer: linear-gradient(to right, #D8E2DC, #FFE5D9);
     --bg-footer-dark: linear-gradient(to right, #415a77, #0d1b2a);
@@ -75,110 +75,6 @@ body {
   height: 100vh;
   margin: 0;
   overflow: hidden;
-}
-
-// Swiper 相关样式
-.swiper-container {
-  width: 100vw;
-  height: 100vh;
-}
-
-.swiper-slide {
-  width: 70%; // 菜单宽度
-  max-width: 320px;
-  background-color: var(--bg-swiper-slide); // 菜单背景色
-  color: var(--color);
-
-  &.content {
-    width: 100%;
-    max-width: none;
-    background-color: var(--bg-swiper-slide);
-  }
-}
-
-.menu {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.menu-content {
-  width: 100%;
-  padding: 20px;
-  ul {
-    list-style: none;
-    padding: 0;
-  }
-  li {
-    padding: 10px;
-    font-size: large;
-    border-bottom: 1px solid gray;
-    cursor: pointer;
-    &:last-child {
-      border-bottom: none;
-    }
-    .export-button {
-      background: transparent;
-      color: var(--color);
-      border: none;
-      font-size: large;
-    }
-  }
-}
-
-.menu-button {
-  position: absolute;
-  top: 0px;
-  left: 0px;
-  padding: 13px;
-  cursor: pointer;
-  z-index: 100;
-  background: var(--bg-menu-button);
-  transition: 0.3s;
-}
-
-.menu-button .bar:nth-of-type(1) {
-  margin-top: 0px;
-}
-.menu-button .bar:nth-of-type(3) {
-  margin-bottom: 0px;
-}
-.bar {
-  position: relative;
-  display: block;
-  width: 50px;
-  height: 5px;
-  margin: 10px auto;
-  background-color: #fff;
-  border-radius: 10px;
-  transition: 0.3s;
-}
-.menu-button:hover .bar:nth-of-type(1) {
-  transform: translateY(1.5px) rotate(-4.5deg);
-}
-.menu-button:hover .bar:nth-of-type(2) {
-  opacity: 0.9;
-}
-.menu-button:hover .bar:nth-of-type(3) {
-  transform: translateY(-1.5px) rotate(4.5deg);
-}
-.cross .bar:nth-of-type(1) {
-  transform: translateY(15px) rotate(-45deg);
-}
-.cross .bar:nth-of-type(2) {
-  opacity: 0;
-}
-.cross .bar:nth-of-type(3) {
-  transform: translateY(-15px) rotate(45deg);
-}
-.cross:hover .bar:nth-of-type(1) {
-  transform: translateY(13.5px) rotate(-40.5deg);
-}
-.cross:hover .bar:nth-of-type(2) {
-  opacity: 0.1;
-}
-.cross:hover .bar:nth-of-type(3) {
-  transform: translateY(-13.5px) rotate(40.5deg);
 }
 
 
@@ -283,38 +179,25 @@ body {
 
 /* 🔥 侧边栏样式 */
 .sidebar {
-  position: fixed;
-  top: 0;
-  left: -260px;
-  width: 260px;
+  display: none;
+  width: 0px;
   height: 100%;
   background: var(--bg-swiper-slide);
   box-shadow: 2px 0 6px rgba(0,0,0,0.2);
+  transition: transform 0.3s ease;
+  flex-shrink: 0;
+  flex-direction: column;
+  transform: translateX(-100%);
   transition: left 0.3s ease;
   z-index: 2000;
-  display: flex;
-  flex-direction: column;
+
 }
 .sidebar.open {
-  left: 0;
-}
-.sidebar-header {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem;
-  background: var(--bg-header);
+  width: 400px; 
+  transform: translateX(0);
 }
-.sidebar-header h3 {
-  margin: 0;
-  font-size: 16px;
-}
-.sidebar-header .close-btn {
-  background: none;
-  border: none;
-  font-size: 18px;
-  cursor: pointer;
-}
+
 .sidebar-list {
   list-style: none;
   padding: 0;
