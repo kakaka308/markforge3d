@@ -11,6 +11,8 @@ import ThreePreview from './components/ThreePreview.vue'
 import InfoPanel from './components/InfoPanel.vue'
 
 import { usePdfExport } from './composables/usePdfExport'
+// 导入新的 useImageExport
+import { useImageExport } from './composables/useImageExport' 
 import { useHistory } from './composables/useHistory'
 import { useShortcuts } from './composables/useShortcuts'
 import { parseMarkdown } from 'markdown-three-parser'
@@ -26,6 +28,9 @@ const { historyList, addHistory, rollback, showHistory, toggleHistory } = useHis
 
 // PDF 导出
 const { exportPdf } = usePdfExport()
+
+// 新增：PNG 导出功能
+const { exportPng } = useImageExport()
 
 // 显示模式：split | markdown | preview
 const viewMode = ref('split')
@@ -85,23 +90,18 @@ const openInfo = (type) => {
   infoOpen.value = true
 }
 
-
-
-
-// 🔥 侧边栏控制
+// 侧边栏控制
 const sidebarOpen = ref(false)
 const toggleSidebar = () => {
   sidebarOpen.value = !sidebarOpen.value
 }
 provide('toggleSidebar', toggleSidebar)
 
-// 🔥 侧边栏配置 JSON
+// 侧边栏配置 JSON
 const menuItems = [
-  { icon: '📑', label: '文件管理', action: () => console.log('打开文件管理') },
-  { icon: '🤖', label: 'AI 辅助', action: () => console.log('调用 AI 功能') },
-  { icon: '⚙', label: '设置', action: () => console.log('打开设置面板') },
   { icon: '📤', label: '导出 PDF', action: () => exportPdf() },
-  { icon: '💾', label: '保存快照', action: () => addHistory() },
+  { icon: '🖼️', label: '导出 PNG', action: () => exportPng() },
+   { icon: '🕰️', label: '历史版本', action: () => toggleHistory() },
   { icon: '💾', label: '使用教程', action: () => openInfo('tutorial') },
   { icon: '📑', label: '常用快捷键', action: () => openInfo('shortcuts') },
 ]

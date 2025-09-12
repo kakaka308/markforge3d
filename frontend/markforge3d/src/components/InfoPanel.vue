@@ -44,7 +44,7 @@ const emit = defineEmits(['close'])
           <h2>列表</h2><hr></hr>
           <div>- 无序列表</div>
           <div>* 无序列表</div>
-          <div>1.有序列表</div>
+          <div>1. 有序列表</div>
           <div>通过 空格缩进 实现嵌套（缩进两格或者四格）</div>
         </div><br></br>
 

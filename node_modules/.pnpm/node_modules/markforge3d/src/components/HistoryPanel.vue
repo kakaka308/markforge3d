@@ -16,17 +16,33 @@ const emit = defineEmits(['rollback', 'close'])
         </button>
       </li>
     </ul>
-    <button @click="emit('close')">关闭</button>
+    <button @click="emit('close')" class="history-panel-close">X</button>
   </div>
 </template>
 
 <style scoped>
 .history-panel {
-  position: absolute;
-  right: 1rem;
-  top: 3rem;
-  background: white;
+  position: fixed;
+  top: 106px;
+  left: 0;
+  width: 380px;
+  min-height: 380px ;
+  font-size: larger;
+  z-index: 3000;
+  background: var(--bg-color);
   border: 1px solid #ddd;
   padding: 1rem;
+}
+.history-panel li button{
+    font-size: 25px;
+}
+.history-panel-close {
+  position: absolute;
+  right: 20px;
+  top: 20px;
+  background:none;
+  border: none;
+  color: var(--color);
+  font-size: 27px;
 }
 </style>
