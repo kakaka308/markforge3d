@@ -162,7 +162,7 @@ const menuItems = [
       <div class="right" v-if="viewMode === 'preview' || viewMode === 'split'" :class="{ full: viewMode === 'preview' }">
         <div class="card">
           <div class="part-title">HTML 预览</div>
-          <div class="scroll-container part-preview">
+          <div class="scroll-container part-preview preview">
             <PreviewPane :renderedHtml="renderedHtml" />
           </div>
         </div>

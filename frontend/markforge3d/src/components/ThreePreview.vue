@@ -29,16 +29,22 @@ watch(() => props.objects, (newObjects) => {
 </template>
 
 <style scoped>
-/* 保持原样或调整样式 */
 .canvas-box {
   justify-self: center;
   min-width: 900px; /* 或者你希望的任意宽度 */
 }
 
 .three-canvas {
-  width: 80%;
+  width: 80%; /* 根据你的实际需求调整 */
   height: 400px;
-  background: #111;
-  border: 1px solid rgb(71, 66, 66);
+  background: #ffffff; /* ⭐ 确保这里是白色背景 */
+  border: 1px solid #777; /* ⭐ 添加你想要的边框样式 */
+  box-sizing: border-box; /* ⭐ 确保边框不会增加额外尺寸 */
+}
+
+/* 强制亮色模式下的 Three.js canvas 样式（可选，如果全局样式覆盖，可能需要） */
+:global(.force-light) .three-canvas {
+    background-color: #ffffff !important;
+    border-color: #777 !important;
 }
 </style>

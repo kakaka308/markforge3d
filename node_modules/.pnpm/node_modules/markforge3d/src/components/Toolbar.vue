@@ -148,13 +148,14 @@ const toggleSidebar = inject('toggleSidebar') // 🔥 注入侧边栏切换
     }
 
     .tooltiptext {
+      height: 30px;
       visibility: hidden;
       opacity: 0;
       padding: 4px 8px;
       border-radius: 4px;
       position: absolute;
       z-index: 1;
-      bottom: -35px;
+      top: -35px;
       left: 50%;
       transform: translateX(-50%);
       white-space: nowrap;
