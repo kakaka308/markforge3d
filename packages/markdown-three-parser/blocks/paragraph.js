@@ -26,8 +26,10 @@ export function flushParagraph(paragraphLines, html, inlineFootnotes) {
       const extra = attrStr ? ' ' + parseAttrs(attrStr) : '';
       return `<img alt="${escapeHTML(alt)}" src="${escapeHTML(src)}"${extra} />`;
     })
+    .replace(/\[([^\]]+?)\]\(([^)]+)\)\{embed\}/g, (_, linkText, url) =>
+      `<iframe src="${escapeHTML(url)}" title="${escapeHTML(linkText)}" width="100%" height="400px" style="border:none;"></iframe>`)
     .replace(/\[([^\]]+?)\]\(([^)]+)\)/g, (_, linkText, url) =>
-      `<a href="${escapeHTML(url)}" target="_blank">${escapeHTML(linkText)}</a>`)
+      `<a href="${escapeHTML(url)}" target="_blank" data-link-text="${escapeHTML(linkText)}" data-url="${escapeHTML(url)}">${escapeHTML(linkText)}</a> <button class="embed-toggle-btn">内嵌</button>`)
     .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')

@@ -41,6 +41,9 @@ function mountThreePreviews() {
     createApp(vnode).mount(appDiv)
   })
 }
+
+
+
 </script>
 
 <template>

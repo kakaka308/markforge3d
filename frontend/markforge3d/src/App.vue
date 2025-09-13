@@ -58,6 +58,10 @@ const insertMarkdown = (syntax, cursorOffset, cursorLength = 0) => {
   })
 }
 
+
+
+
+
 // 快捷键
 useShortcuts({
   addHistory,
@@ -79,6 +83,54 @@ onMounted(() => {
     freeMode: true,
     spaceBetween: 10,
   })
+  // 查找预览容器
+  const previewContainer = document.querySelector('.part-preview.preview');
+  if (!previewContainer) return;
+
+  // 使用事件委托
+  previewContainer.addEventListener('click', (event) => {
+    const target = event.target;
+    // 检查点击的是否是内嵌按钮
+    if (target.matches('.embed-toggle-btn')) {
+      const parentParagraph = target.closest('p');
+      const link = target.previousElementSibling;
+      
+      if (link && link.tagName === 'A') {
+        const url = link.getAttribute('data-url');
+        const linkText = link.getAttribute('data-link-text');
+
+        const iframe = document.createElement('iframe');
+        iframe.src = url;
+        iframe.title = linkText;
+        iframe.width = '100%';
+        iframe.height = '400px';
+        iframe.style.border = '1px solid #ccc';
+        
+        const closeBtn = document.createElement('button');
+        closeBtn.textContent = '关闭内嵌';
+        closeBtn.className = 'embed-close-btn';
+        
+        closeBtn.onclick = () => {
+            const restoredHtml = `<a href="${url}" target="_blank" data-link-text="${linkText}" data-url="${url}">${linkText}</a> <button class="embed-toggle-btn">内嵌</button>`;
+            parentParagraph.innerHTML = restoredHtml;
+            // 因为innerHTML会重新渲染，所以这里需要重新绑定事件，但用事件委托就不用了
+        };
+
+        parentParagraph.replaceChild(iframe, link);
+        parentParagraph.replaceChild(closeBtn, target);
+      }
+    } else if (target.matches('.embed-close-btn')) {
+        // 恢复链接
+        const parentParagraph = target.closest('p');
+        const iframe = target.previousElementSibling;
+        if (iframe && iframe.tagName === 'IFRAME') {
+            const url = iframe.src;
+            const linkText = iframe.title;
+            const restoredHtml = `<a href="${url}" target="_blank" data-link-text="${linkText}" data-url="${url}">${linkText}</a> <button class="embed-toggle-btn">内嵌</button>`;
+            parentParagraph.innerHTML = restoredHtml;
+        }
+    }
+  });
 })
 
 // 使用教程与常见快捷键展示

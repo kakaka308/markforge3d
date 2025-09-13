@@ -363,3 +363,21 @@ code:not([class*="language-"]) {
   color: white;
   font-size: 16px;
 }
+
+
+.embed-toggle-btn,
+.embed-close-btn {
+  background: none;
+  font-size: 24px;
+  color: var(--color);
+  padding: 4px 10px;
+  border-radius: 10px;
+  box-shadow: 10px 5px 5px #000000;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.embed-toggle-btn:hover,
+.embed-close-btn:hover {
+  box-shadow: none;
+  transform: translate(10px, 5px);
+}
