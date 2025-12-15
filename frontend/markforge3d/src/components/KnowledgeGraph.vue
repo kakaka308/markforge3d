@@ -12,11 +12,10 @@ const emit = defineEmits(['close', 'node-click'])
 
 const container = ref(null)
 
-// 🎨 1. 定义配色方案 (显眼且好看的霓虹色系)
 const NODE_COLORS = {
-  doc: '#ff4757', // 🔴 文档：鲜艳的珊瑚红
-  h1: '#2ed573',  // 🟢 一级标题：霓虹绿
-  h2: '#1e90ff'   // 🔵 二级标题：道奇蓝
+  doc: '#ff4757', // 🔴 文档
+  h1: '#2ed573',  // 🟢 一级标题
+  h2: '#1e90ff'   // 🔵 二级标题
 }
 
 // 提取数据构建图谱
@@ -27,7 +26,7 @@ const buildGraphData = () => {
 
   props.docs.forEach(doc => {
     const lines = doc.content.split('\n')
-    let currentH1 = null
+    let latestH1NodeId = null
     
     const docNodeId = `doc-${doc.id}`
     
@@ -42,7 +41,6 @@ const buildGraphData = () => {
         })
         nodeMap.set(docNodeId, true)
     }
-    currentH1 = docNodeId
 
     lines.forEach(line => {
       const h1Match = line.match(/^#\s+(.*)/)
@@ -60,7 +58,11 @@ const buildGraphData = () => {
           })
           nodeMap.set(name, true)
         }
-        links.push({ source: currentH1, target: name })
+        // H1 依然连接到文档根节点
+        links.push({ source: docNodeId, target: name })
+        
+        latestH1NodeId = name
+
       } else if (h2Match) {
         const name = h2Match[1]
         if (!nodeMap.has(name)) {
@@ -73,7 +75,9 @@ const buildGraphData = () => {
           })
           nodeMap.set(name, true)
         }
-        links.push({ source: currentH1, target: name })
+        // 修改连接逻辑：如果有 H1，连接到 H1；否则连接到文档根节点
+        const targetSource = latestH1NodeId ? latestH1NodeId : docNodeId
+        links.push({ source: targetSource, target: name })
       }
     })
   })
@@ -93,13 +97,9 @@ const initGraph = () => {
   const Graph = new ThreeForceGraph()
     .graphData(gData)
     .nodeThreeObject(node => {
-      // 创建组
       const group = new THREE.Group();
-
-      // 计算半径
       const radius = node.val ? Math.sqrt(node.val) : 3;
 
-      // 创建球体 (使用节点颜色)
       const geometry = new THREE.SphereGeometry(radius, 32, 32);
       const material = new THREE.MeshLambertMaterial({ 
         color: node.color, 
@@ -109,33 +109,31 @@ const initGraph = () => {
       const sphere = new THREE.Mesh(geometry, material);
       group.add(sphere);
 
-      // 创建卡片
       const sprite = new SpriteText(node.name);
       sprite.color = '#ffffff';
       sprite.textHeight = 3.5; 
       sprite.backgroundColor = 'rgba(0, 0, 0, 0.6)'; 
-      sprite.borderColor = node.color; // 边框颜色跟随节点
+      sprite.borderColor = node.color; 
       sprite.borderWidth = 1;
       sprite.borderRadius = 6;
       sprite.padding = [6, 3]; 
-
-      // 偏移到球体上方
       sprite.position.y = radius + 5; 
       
       group.add(sprite);
-
       return group;
     })
-    // 🔥 修改重点：银白色、更粗、更显眼
-    .linkWidth(3)                // 线宽加粗到 3
-    .linkColor(() => '#ffffff')  // 纯白色（在深色背景下即为最亮的银白色）
+    .linkColor(() => '#ffffff')
+.linkOpacity(0.4)
+.linkWidth(0.8) // 更粗的线
+.linkDirectionalParticles(1) // 可选：添加粒子流动效果
+.linkDirectionalParticleWidth(0.78)
+.linkDirectionalParticleColor(() => '#1166b4')
+.linkDirectionalParticleSpeed(0.03)
 
-  // 场景设置
   const scene = new THREE.Scene()
-  scene.background = new THREE.Color(0x0a0a0a) // 🖤 更加深邃的纯黑/深灰背景
+  scene.background = new THREE.Color(0x0a0a0a) 
   scene.add(Graph)
 
-  // 灯光系统
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
   scene.add(ambientLight);
 
@@ -189,34 +187,25 @@ watch(() => props.isOpen, (val) => {
 <template>
   <div v-if="isOpen" class="graph-modal">
     <button class="close-btn" @click="emit('close')">✖ 关闭图谱</button>
-    
     <div ref="container" class="graph-container"></div>
     
     <div class="legend-panel">
       <div class="legend-title">节点类型</div>
-      
       <div class="legend-item">
         <span class="dot" :style="{ background: NODE_COLORS.doc }"></span>
         <span>文档 (Document)</span>
       </div>
-      
       <div class="legend-item">
         <span class="dot" :style="{ background: NODE_COLORS.h1 }"></span>
         <span>一级标题 (H1)</span>
       </div>
-      
       <div class="legend-item">
         <span class="dot" :style="{ background: NODE_COLORS.h2 }"></span>
         <span>二级标题 (H2)</span>
       </div>
-
       <div class="legend-divider"></div>
-      
-      <div class="legend-help">
-        🖱️ 拖拽旋转 / 📦 滚轮缩放
-      </div>
+      <div class="legend-help">🖱️ 拖拽旋转 / 📦 滚轮缩放</div>
     </div>
-
   </div>
 </template>
 

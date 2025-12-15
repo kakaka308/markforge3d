@@ -1,9 +1,8 @@
 <script setup>
-import { ref, provide, computed, onMounted } from 'vue'
+import { ref, provide, computed, onMounted, watch } from 'vue'
 import Swiper from 'swiper/bundle'
 import 'swiper/css/bundle'
 
-// 组件引入
 import MarkdownEditor from './components/MarkdownEditor.vue'
 import PreviewPane from './components/PreviewPane.vue'
 import Toolbar from './components/Toolbar.vue'
@@ -13,7 +12,6 @@ import DocList from './components/DocList.vue'
 import AIAssistant from './components/AIAssistant.vue'
 import KnowledgeGraph from './components/KnowledgeGraph.vue'
 
-// Composables
 import { usePdfExport } from './composables/usePdfExport'
 import { useImageExport } from './composables/useImageExport' 
 import { useHistory } from './composables/useHistory'
@@ -22,53 +20,69 @@ import { useTheme } from './composables/useTheme'
 import { useDocuments } from './composables/useDocuments'
 import { parseMarkdown } from 'markdown-three-parser'
 
-// Markdown 输入
-const markdownInput = ref(localStorage.getItem('draft') || '# Hello Markdown\n\n:::three\n### cube (0x007bff, 1.5)\n### sphere (red, 1)\n:::')
+const markdownInput = ref(localStorage.getItem('draft') || '')
+const docTitle = ref(localStorage.getItem('draft_title') || '未命名文档')
 
-// HTML 渲染
+// 草稿缓存
+watch(docTitle, (val) => localStorage.setItem('draft_title', val))
+watch(markdownInput, (val) => localStorage.setItem('draft', val))
+
 const renderedHtml = computed(() => parseMarkdown(markdownInput.value) || '')
 
-// 功能模块初始化
 const { historyList, addHistory, rollback } = useHistory(markdownInput)
 const { exportPdf } = usePdfExport()
 const { exportPng } = useImageExport()
 const { isDark, toggleTheme } = useTheme()
-const { documents, saveCurrentDoc, deleteDoc } = useDocuments(markdownInput)
 
-// 视图控制
+// 🔥 使用新的 useDocuments
+const { 
+  documents, 
+  currentDocId, 
+  saveCurrentDoc, 
+  deleteDoc, 
+  createNewDoc, 
+  updateDocTitle 
+} = useDocuments(markdownInput, docTitle)
+
 const viewMode = ref('split')
 const sidebarOpen = ref(false)
-const sidebarView = ref('main') // 新增：控制侧边栏显示内容 ('main' | 'history')
+const sidebarView = ref('main')
 const infoOpen = ref(false)
 const infoType = ref('tutorial')
 const showGraph = ref(false)
 
-// Methods
 const toggleMarkdownMode = () => viewMode.value = viewMode.value === 'markdown' ? 'split' : 'markdown'
 const togglePreviewMode = () => viewMode.value = viewMode.value === 'preview' ? 'split' : 'preview'
 const toggleSidebar = () => sidebarOpen.value = !sidebarOpen.value
 const openInfo = (type) => { infoType.value = type; infoOpen.value = true }
 
-// 切换到历史记录视图
 const showHistoryView = () => {
   sidebarView.value = 'history'
-  sidebarOpen.value = true // 确保侧边栏打开
+  sidebarOpen.value = true
 }
 
-// 加载文档
-const loadDoc = (doc) => {
-  if(confirm('加载新文档将覆盖当前内容，是否继续？')) {
-    markdownInput.value = doc.content
-    // 移动端体验优化: 加载后如果是在移动端可以关闭侧边栏，这里暂不强制
+const handleCreateNew = () => {
+  if (confirm('确定要新建文档吗？未保存的内容将会丢失。')) {
+    createNewDoc()
   }
 }
 
-// AI 生成文档的回调
+const loadDoc = (doc) => {
+  if(confirm('加载新文档将覆盖当前编辑内容，是否继续？')) {
+    markdownInput.value = doc.content
+    docTitle.value = doc.title
+    currentDocId.value = doc.id
+  }
+}
+
+const handleRename = ({ id, title }) => {
+  updateDocTitle(id, title)
+}
+
 const handleAICreateDoc = (content) => {
   markdownInput.value = content
 }
 
-// 插入 Markdown
 const insertMarkdown = (syntax, cursorOffset, cursorLength = 0) => {
   const textarea = document.querySelector('textarea')
   if (!textarea) return
@@ -87,15 +101,8 @@ const insertMarkdown = (syntax, cursorOffset, cursorLength = 0) => {
   })
 }
 
-// 快捷键
-useShortcuts({ 
-  addHistory, 
-  toggleHistory: showHistoryView, // 快捷键 Ctrl+H 现在直接打开侧边栏历史视图
-  exportPdf, 
-  insertMarkdown 
-})
+useShortcuts({ addHistory, toggleHistory: showHistoryView, exportPdf, insertMarkdown })
 
-// Provide
 provide('insertMarkdown', insertMarkdown)
 provide('toggleMarkdownMode', toggleMarkdownMode)
 provide('togglePreviewMode', togglePreviewMode)
@@ -104,18 +111,17 @@ provide('toggleSidebar', toggleSidebar)
 provide('toggleTheme', toggleTheme)
 provide('isDark', isDark)
 
-// 初始化
 onMounted(() => {
   new Swiper('.swiper-container', { slidesPerView: 'auto', freeMode: true, spaceBetween: 10 })
 })
 
-// 侧边栏菜单配置
 const menuItems = [
+  { icon: '📄', label: '新建文档', action: handleCreateNew },
   { icon: '💾', label: '保存文档', action: () => { saveCurrentDoc(); alert('文档已保存') } },
   { icon: '🕸️', label: '知识图谱', action: () => showGraph.value = true },
   { icon: '📤', label: '导出 PDF', action: () => exportPdf() },
   { icon: '🖼️', label: '导出 PNG', action: () => exportPng() },
-  { icon: '🕰️', label: '历史版本', action: showHistoryView }, // 修改动作
+  { icon: '🕰️', label: '历史版本', action: showHistoryView },
   { icon: '📖', label: '使用教程', action: () => openInfo('tutorial') },
 ]
 </script>
@@ -134,16 +140,21 @@ const menuItems = [
     <div class="main" :class="{ 'mode-markdown': viewMode === 'markdown', 'mode-preview': viewMode === 'preview' }">
       
       <aside class="sidebar" :class="{ open: sidebarOpen }">
-        
         <div v-if="sidebarView === 'main'" class="sidebar-main-view">
           <ul class="sidebar-list">
             <li v-for="item in menuItems" :key="item.label" @click="item.action">
               <span>{{ item.icon }}</span> {{ item.label }}
             </li>
           </ul>
-          <DocList :docs="documents" @load="loadDoc" @delete="deleteDoc" />
+          <DocList 
+            :docs="documents" 
+            :currentId="currentDocId"
+            @load="loadDoc" 
+            @delete="deleteDoc"
+            @rename="handleRename" 
+          />
         </div>
-
+        
         <HistoryPanel 
           v-else-if="sidebarView === 'history'"
           :historyList="historyList"
@@ -156,7 +167,15 @@ const menuItems = [
 
       <div class="left" v-if="viewMode !== 'preview'" :class="{ full: viewMode === 'markdown' }">
         <div class="card">
-          <div class="part-title">Markdown 编辑区</div>
+          <div class="editor-header">
+            <input 
+              v-model="docTitle" 
+              class="main-title-input" 
+              type="text" 
+              placeholder="请输入文档标题" 
+            />
+          </div>
+          
           <div class="scroll-container part-textarea">
             <MarkdownEditor v-model="markdownInput" />
           </div>
@@ -178,3 +197,33 @@ const menuItems = [
 </template>
 
 <style lang="scss" src="./assets/styles.scss"></style>
+
+<style scoped>
+/* 🔥 大标题样式 */
+.editor-header {
+  padding: 20px 30px 10px 30px;
+  background: var(--bg-surface);
+  flex-shrink: 0;
+}
+
+.main-title-input {
+  width: 100%;
+  font-size: 32px; /* 🔥 字体最大 */
+  font-weight: 700;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  outline: none;
+  font-family: 'Inter', sans-serif;
+}
+
+.main-title-input::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.5;
+}
+
+.main-title-input:focus {
+  /* 获得焦点时，底部显示一条线 */
+  border-bottom: 2px solid var(--color-accent);
+}
+</style>

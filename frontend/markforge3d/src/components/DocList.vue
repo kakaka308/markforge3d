@@ -1,8 +1,39 @@
 <script setup>
+import { ref, nextTick } from 'vue'
+
 defineProps({
-  docs: Array
+  docs: Array,
+  currentId: String // 接收当前编辑的ID，用于高亮
 })
-const emit = defineEmits(['load', 'delete'])
+const emit = defineEmits(['load', 'delete', 'rename'])
+
+// 编辑状态管理
+const editingId = ref(null)
+const editTitle = ref('')
+const editInputRef = ref(null)
+
+// 开始重命名
+const startRename = (doc) => {
+  editingId.value = doc.id
+  editTitle.value = doc.title
+  nextTick(() => {
+    // 自动聚焦输入框
+    editInputRef.value?.[0]?.focus()
+  })
+}
+
+// 确认重命名
+const finishRename = (doc) => {
+  if (editingId.value === doc.id) {
+    emit('rename', { id: doc.id, title: editTitle.value })
+    editingId.value = null
+  }
+}
+
+// 取消重命名
+const cancelRename = () => {
+  editingId.value = null
+}
 </script>
 
 <template>
@@ -16,14 +47,37 @@ const emit = defineEmits(['load', 'delete'])
     </div>
 
     <ul v-else class="list-content">
-      <li v-for="doc in docs" :key="doc.id" class="doc-item" @click="emit('load', doc)">
+      <li 
+        v-for="doc in docs" 
+        :key="doc.id" 
+        class="doc-item" 
+        :class="{ active: currentId === doc.id }"
+        @click="emit('load', doc)"
+      >
         <div class="doc-main">
-          <span class="doc-title">{{ doc.title || '未命名文档' }}</span>
+          <div v-if="editingId === doc.id" class="rename-box" @click.stop>
+            <input 
+              ref="editInputRef"
+              v-model="editTitle"
+              @blur="finishRename(doc)"
+              @keyup.enter="finishRename(doc)"
+              @keyup.esc="cancelRename"
+              class="rename-input"
+            />
+          </div>
+          <span v-else class="doc-title" :title="doc.title">{{ doc.title || '未命名文档' }}</span>
+          
           <span class="doc-date">{{ doc.createdAt.split(' ')[0] }}</span>
         </div>
-        <button class="delete-btn" @click.stop="emit('delete', doc.id)" title="删除文档">
-          ×
-        </button>
+
+        <div class="doc-actions">
+          <button v-if="editingId !== doc.id" class="action-btn rename-btn" @click.stop="startRename(doc)" title="重命名">
+            ✎
+          </button>
+          <button class="action-btn delete-btn" @click.stop="emit('delete', doc.id)" title="删除文档">
+            ×
+          </button>
+        </div>
       </li>
     </ul>
   </div>
@@ -55,32 +109,37 @@ const emit = defineEmits(['load', 'delete'])
 .list-content {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .doc-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px;
+  padding: 8px 10px;
   background: var(--bg-surface);
-  border: 1px solid var(--border-color);
+  border: 1px solid transparent; /* 预留边框位置防止抖动 */
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all 0.2s ease;
-  position: relative;
 }
 
 .doc-item:hover {
   background: var(--bg-hover);
-  border-color: var(--text-secondary);
-  transform: translateY(-1px);
+}
+
+/* 高亮当前正在编辑的文档 */
+.doc-item.active {
+  border-color: var(--color-accent);
+  background: var(--bg-hover);
 }
 
 .doc-main {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  flex: 1;
+  margin-right: 10px;
 }
 
 .doc-title {
@@ -92,28 +151,57 @@ const emit = defineEmits(['load', 'delete'])
   text-overflow: ellipsis;
 }
 
+.rename-input {
+  width: 100%;
+  font-size: 14px;
+  padding: 2px 4px;
+  border: 1px solid var(--color-accent);
+  border-radius: 4px;
+  background: var(--bg-app);
+  color: var(--text-primary);
+  outline: none;
+}
+
 .doc-date {
-  font-size: 16px;
+  font-size: 15px;
   color: var(--text-secondary);
   margin-top: 2px;
 }
 
-.delete-btn {
+.doc-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.action-btn {
   width: 24px;
   height: 24px;
-  border-radius: 50%;
+  border-radius: 4px;
   border: none;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 18px;
-  line-height: 1;
+  font-size: 14px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.2s;
+  opacity: 0; /* 默认隐藏，hover显示 */
 }
 
+.doc-item:hover .action-btn {
+  opacity: 1;
+}
+
+.rename-btn:hover {
+  background: var(--bg-app);
+  color: var(--color-accent);
+}
+
+.delete-btn {
+  font-size: 18px;
+}
 .delete-btn:hover {
   background: var(--bg-app);
   color: var(--color-danger);
