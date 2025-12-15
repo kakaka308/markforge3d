@@ -67,7 +67,7 @@ const formatTime = (timestamp) => {
 }
 
 .panel-header h3 {
-  font-size: 14px;
+  font-size: 17px;
   font-weight: 600;
   color: var(--text-primary);
   margin: 0;

@@ -143,11 +143,11 @@ button { font-family: inherit; }
         align-items: center;
         gap: 10px;
         color: var(--text-primary);
-        font-size: 14px;
+        font-size: 17px;
         transition: background 0.2s;
         
         &:hover { background: var(--bg-hover); }
-        span { font-size: 16px; } /* 图标大小 */
+        span { font-size: 18px; } /* 图标大小 */
       }
     }
   }

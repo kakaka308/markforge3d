@@ -36,7 +36,7 @@ const emit = defineEmits(['load', 'delete'])
 }
 
 .list-header h3 {
-  font-size: 12px;
+  font-size: 17px;
   color: var(--text-secondary);
   text-transform: uppercase;
   margin-bottom: 10px;
@@ -46,7 +46,7 @@ const emit = defineEmits(['load', 'delete'])
 .empty-state {
   text-align: center;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: 17px;
   padding: 20px 0;
   border: 1px dashed var(--border-color);
   border-radius: var(--radius-sm);
@@ -85,7 +85,7 @@ const emit = defineEmits(['load', 'delete'])
 
 .doc-title {
   font-weight: 500;
-  font-size: 14px;
+  font-size: 16px;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
@@ -93,7 +93,7 @@ const emit = defineEmits(['load', 'delete'])
 }
 
 .doc-date {
-  font-size: 11px;
+  font-size: 16px;
   color: var(--text-secondary);
   margin-top: 2px;
 }

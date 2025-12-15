@@ -83,6 +83,7 @@ const isDark = inject('isDark')
   gap: 8px; /* 稍微减小间距以容纳更多按钮 */
   flex-shrink: 0;
   overflow-x: auto; /* 允许横向滚动，防止屏幕窄时溢出 */
+
 }
 
 /* 隐藏滚动条但保留功能 */
@@ -92,6 +93,7 @@ const isDark = inject('isDark')
 }
 
 .toolbar-group {
+    font-size: 18px;
   display: flex;
   align-items: center;
   gap: 2px;
@@ -119,7 +121,7 @@ const isDark = inject('isDark')
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 16px;
   transition: all 0.2s;
   font-family: 'Inter', sans-serif;
   font-weight: 500;
@@ -144,7 +146,7 @@ const isDark = inject('isDark')
 .text-btn {
   width: auto;
   padding: 0 10px;
-  font-size: 13px;
+  font-size: 16px;
 }
 
 .menu-btn {
