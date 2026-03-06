@@ -1,13 +1,29 @@
 <script setup>
-import { onMounted, watch, nextTick, h, createApp } from 'vue'
+// 修复3：引入 DOMPurify 对渲染后的 HTML 做净化，防止 XSS 攻击。
+//        需要安装依赖：pnpm add dompurify
+// 修复4：维护 Vue 实例列表，重新挂载前先 unmount() 旧实例，
+//        防止每次 Markdown 变化都累积不销毁的 Vue 实例导致内存泄漏。
+import { onMounted, onBeforeUnmount, watch, nextTick, computed, h, createApp } from 'vue'
+import DOMPurify from 'dompurify'
 import ThreePreview from './ThreePreview.vue'
 
 const props = defineProps({
   renderedHtml: String
 })
 
-// 使用 watch 监听 renderedHtml 的变化，确保每次更新都重新挂载 3D 组件
-watch(() => props.renderedHtml, (newHtml) => {
+// 修复3：配置 DOMPurify，允许合法的 HTML 标签和属性，同时阻止 XSS
+const SAFE_HTML = computed(() => {
+  return DOMPurify.sanitize(props.renderedHtml || '', {
+    ADD_TAGS: ['iframe', 'math', 'annotation', 'semantics', 'mrow', 'mi', 'mo', 'mn', 'msup', 'msub', 'mfrac', 'msqrt', 'mtext', 'mspace', 'mover', 'munder', 'munderover', 'mtable', 'mtr', 'mtd'],
+    ADD_ATTR: ['data-objects', 'data-link-text', 'data-url', 'target', 'rel', 'allowfullscreen'],
+    FORCE_BODY: false
+  })
+})
+
+// 修复4：记录所有已挂载的 Vue 实例，卸载时统一清理
+const mountedApps = []
+
+watch(() => props.renderedHtml, () => {
   nextTick(mountThreePreviews)
 })
 
@@ -15,53 +31,51 @@ onMounted(() => {
   nextTick(mountThreePreviews)
 })
 
-function mountThreePreviews() {
-  // 清理旧的挂载实例，避免重复渲染
-  const oldPreviews = document.querySelectorAll('.three-preview')
-  oldPreviews.forEach(container => {
-    // 移除所有子节点
-    while (container.firstChild) {
-      container.removeChild(container.firstChild)
-    }
-  })
+// 修复4：组件卸载时销毁所有子 Vue 实例
+onBeforeUnmount(() => {
+  cleanupApps()
+})
 
-  // 找到所有三维占位容器
-  const containers = document.querySelectorAll('.three-preview')
-  containers.forEach(container => {
-    const dataObjects = JSON.parse(container.dataset.objects)
-    
-    // 创建一个 div 挂载 ThreePreview
-    const appDiv = document.createElement('div')
-    container.appendChild(appDiv)
-
-    // 创建 Vue 虚拟节点，并传入数据
-    const vnode = h(ThreePreview, {
-      objects: dataObjects // 将数据作为 prop 传递
-    })
-    createApp(vnode).mount(appDiv)
+function cleanupApps() {
+  mountedApps.forEach(app => {
+    try { app.unmount() } catch (e) { /* ignore */ }
   })
+  mountedApps.length = 0
 }
 
+function mountThreePreviews() {
+  // 修复4：先销毁所有旧实例，再重新挂载
+  cleanupApps()
 
+  const containers = document.querySelectorAll('.three-preview')
+  containers.forEach(container => {
+    // 清空容器内容
+    container.innerHTML = ''
 
+    let dataObjects = []
+    try {
+      dataObjects = JSON.parse(container.dataset.objects || '[]')
+    } catch (e) {
+      console.error('three-preview data-objects 解析失败:', e)
+    }
+
+    const mountDiv = document.createElement('div')
+    container.appendChild(mountDiv)
+
+    const app = createApp(h(ThreePreview, { objects: dataObjects }))
+    app.mount(mountDiv)
+    mountedApps.push(app)
+  })
+}
 </script>
 
 <template>
-  <div class="preview-pane" v-html="renderedHtml"></div>
+  <!-- 修复3：使用净化后的 SAFE_HTML 而非原始 renderedHtml -->
+  <div class="preview-pane" v-html="SAFE_HTML"></div>
 </template>
 
 <style scoped>
 .preview-pane {
-  /* 确保这个容器可以滚动 */
-  /* 如果不需要全屏高度，可以移除 */
   height: 100vh;
-}
-/* 添加一个样式让 3D 卡片看起来像卡片 */
-.three-preview {
-  margin: 20px 0;
-  padding: 15px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  background-color: #f9f9f9;
 }
 </style>

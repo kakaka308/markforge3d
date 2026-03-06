@@ -13,7 +13,7 @@ const modelValue = defineModel()
   flex: 1;
   display: flex;
   flex-direction: column;
-  height: 100%; /* 🔥 确保占满父容器高度 */
+  height: 100%;
   width: 100%;
 }
 textarea {
@@ -22,6 +22,6 @@ textarea {
   border: none;
   resize: none;
   font-family: monospace;
-  height: 100%; /* 🔥 确保 textarea 占满 .editor */
+  height: 100%;
 }
 </style>

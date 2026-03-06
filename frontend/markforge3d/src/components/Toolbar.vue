@@ -13,9 +13,7 @@ const isDark = inject('isDark')
 <template>
   <div class="toolbar">
     <div class="toolbar-group">
-      <button class="icon-btn menu-btn" @click="toggleSidebar" title="菜单">
-        ☰
-      </button>
+      <button class="icon-btn menu-btn" @click="toggleSidebar" title="菜单">☰</button>
     </div>
 
     <div class="divider"></div>
@@ -77,79 +75,27 @@ const isDark = inject('isDark')
   height: var(--toolbar-height);
   background: var(--bg-surface);
   border-bottom: 1px solid var(--border-color);
-  display: flex;
-  align-items: center;
-  padding: 0 15px;
-  gap: 8px; /* 稍微减小间距以容纳更多按钮 */
-  flex-shrink: 0;
-  overflow-x: auto; /* 允许横向滚动，防止屏幕窄时溢出 */
-
+  display: flex; align-items: center;
+  padding: 0 15px; gap: 8px; flex-shrink: 0; overflow-x: auto;
 }
-
-/* 隐藏滚动条但保留功能 */
-.toolbar::-webkit-scrollbar {
-  height: 0;
-  width: 0;
-}
-
-.toolbar-group {
-    font-size: 18px;
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-
+.toolbar::-webkit-scrollbar { height: 0; width: 0; }
+.toolbar-group { font-size: 18px; display: flex; align-items: center; gap: 2px; }
 .ml-auto { margin-left: auto; }
-
-.divider {
-  width: 1px;
-  height: 18px;
-  background: var(--border-color);
-  margin: 0 6px;
-  flex-shrink: 0;
-}
+.divider { width: 1px; height: 18px; background: var(--border-color); margin: 0 6px; flex-shrink: 0; }
 
 .icon-btn {
-  height: 30px;
-  min-width: 30px;
-  padding: 0 6px;
-  border: none;
-  background: transparent;
-  color: var(--text-primary);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  transition: all 0.2s;
-  font-family: 'Inter', sans-serif;
-  font-weight: 500;
+  height: 30px; min-width: 30px; padding: 0 6px; border: none;
+  background: transparent; color: var(--text-primary);
+  border-radius: var(--radius-sm); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; transition: all 0.2s;
+  font-family: 'Inter', sans-serif; font-weight: 500;
 }
-
-/* 特殊样式微调 */
 .font-bold { font-weight: 800; font-family: serif; }
 .font-italic { font-style: italic; font-family: serif; font-weight: 700; }
 .strike { text-decoration: line-through; }
-
-.icon-btn:hover {
-  background: var(--bg-hover);
-  color: var(--color-accent);
-}
-
-.icon-btn.active {
-  background: var(--bg-hover);
-  color: var(--color-accent);
-  font-weight: bold;
-}
-
-.text-btn {
-  width: auto;
-  padding: 0 10px;
-  font-size: 16px;
-}
-
-.menu-btn {
-  font-size: 18px;
-}
+.icon-btn:hover { background: var(--bg-hover); color: var(--color-accent); }
+.icon-btn.active { background: var(--bg-hover); color: var(--color-accent); font-weight: bold; }
+.text-btn { width: auto; padding: 0 10px; font-size: 16px; }
+.menu-btn { font-size: 18px; }
 </style>

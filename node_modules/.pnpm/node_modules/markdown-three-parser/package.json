@@ -23,12 +23,10 @@
     "3d",
     "math"
   ],
-  "author": "Your Name",
+  "author": "",
   "license": "MIT",
   "packageManager": "pnpm@10.12.4",
   "dependencies": {
-    "html2canvas": "^1.4.1",
-    "jspdf": "^3.0.1",
     "katex": "^0.16.22",
     "prismjs": "^1.30.0"
   },

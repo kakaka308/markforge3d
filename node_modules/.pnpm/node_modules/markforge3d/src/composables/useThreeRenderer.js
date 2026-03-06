@@ -1,3 +1,7 @@
+// src/composables/useThreeRenderer.js
+// 修复17：将 scene.children = ... 直接赋值改为调用 scene.remove() 逐个移除，
+//         触发 Three.js 内部的正确事件，同时对废弃的 mesh 调用 geometry.dispose()
+//         和 material.dispose() 释放 GPU 资源，避免显存泄漏。
 import * as THREE from 'three'
 
 export function useThreeRenderer(canvas, shapes = []) {
@@ -11,14 +15,12 @@ export function useThreeRenderer(canvas, shapes = []) {
     1000
   )
 
-  // 🔥 强制绑定外部传入的 canvas
   const renderer = new THREE.WebGLRenderer({
-  canvas,
-  antialias: true,
-  preserveDrawingBuffer: true, // ✅ 保证 toDataURL 有内容
-})
-renderer.setClearColor(0xffffff, 1) // ✅ 避免透明背景
-
+    canvas,
+    antialias: true,
+    preserveDrawingBuffer: true // 保证 toDataURL 有内容
+  })
+  renderer.setClearColor(0xffffff, 1)
   renderer.setSize(canvas.clientWidth, canvas.clientHeight)
 
   // 光照
@@ -28,22 +30,32 @@ renderer.setClearColor(0xffffff, 1) // ✅ 避免透明背景
   directionalLight.position.set(5, 5, 5)
   scene.add(directionalLight)
 
-  // 工厂函数
+  // 工厂函数：创建几何体
   function createShape({ type, color = 'skyblue', size = 1 }) {
     let geometry
     switch (type.toLowerCase()) {
-      case 'cube': geometry = new THREE.BoxGeometry(size, size, size); break
-      case 'sphere': geometry = new THREE.SphereGeometry(size, 32, 32); break
-      case 'cone': geometry = new THREE.ConeGeometry(size, size * 2, 32); break
-      case 'cylinder': geometry = new THREE.CylinderGeometry(size, size, size * 2, 32); break
-      case 'torus': geometry = new THREE.TorusGeometry(size, size * 0.4, 16, 100); break
-      default: geometry = new THREE.BoxGeometry(size, size, size)
+      case 'cube':
+        geometry = new THREE.BoxGeometry(size, size, size)
+        break
+      case 'sphere':
+        geometry = new THREE.SphereGeometry(size, 32, 32)
+        break
+      case 'cone':
+        geometry = new THREE.ConeGeometry(size, size * 2, 32)
+        break
+      case 'cylinder':
+        geometry = new THREE.CylinderGeometry(size, size, size * 2, 32)
+        break
+      case 'torus':
+        geometry = new THREE.TorusGeometry(size, size * 0.4, 16, 100)
+        break
+      default:
+        geometry = new THREE.BoxGeometry(size, size, size)
     }
     const material = new THREE.MeshStandardMaterial({ color })
     return new THREE.Mesh(geometry, material)
   }
 
-  // 添加 shapes
   function addShapes(objs) {
     objs.forEach((s, i) => {
       const mesh = createShape(s)
@@ -54,13 +66,12 @@ renderer.setClearColor(0xffffff, 1) // ✅ 避免透明背景
   }
 
   addShapes(shapes)
-
   camera.position.z = 6
 
-  // 动画
+  let animFrameId = null
   const animate = () => {
-    requestAnimationFrame(animate)
-    shapes.forEach((s) => {
+    animFrameId = requestAnimationFrame(animate)
+    shapes.forEach(s => {
       if (s.__mesh) {
         s.__mesh.rotation.x += 0.01
         s.__mesh.rotation.y += 0.01
@@ -70,18 +81,36 @@ renderer.setClearColor(0xffffff, 1) // ✅ 避免透明背景
   }
   animate()
 
-  // 🔥 提供更新方法
-  const updateScene = (newShapes) => {
-    // 清除旧 mesh
-    scene.children = scene.children.filter(c => c.isLight || c.isCamera)
-    addShapes(newShapes)
+  // 修复17：正确移除 mesh，逐个调用 scene.remove() 并释放 GPU 资源
+  const clearMeshes = () => {
+    const toRemove = scene.children.filter(
+      c => c.isMesh // 只移除 Mesh，保留灯光
+    )
+    toRemove.forEach(mesh => {
+      scene.remove(mesh)
+      mesh.geometry?.dispose()
+      if (Array.isArray(mesh.material)) {
+        mesh.material.forEach(m => m.dispose())
+      } else {
+        mesh.material?.dispose()
+      }
+    })
   }
 
-  // ✅ 返回 renderer，外部就能导出 canvas 图像
-  return {
-    renderer,
-    scene,
-    camera,
-    updateScene
+  const updateScene = (newShapes) => {
+    clearMeshes()
+    // 清空旧 shapes 数组的引用，再添加新的
+    shapes.length = 0
+    shapes.push(...newShapes)
+    addShapes(shapes)
   }
+
+  // 销毁方法：供外部在组件卸载时调用
+  const dispose = () => {
+    if (animFrameId) cancelAnimationFrame(animFrameId)
+    clearMeshes()
+    renderer.dispose()
+  }
+
+  return { renderer, scene, camera, updateScene, dispose }
 }

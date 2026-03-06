@@ -1,134 +1,138 @@
-import { flushParagraph } from './blocks/paragraph.js';
-import { handleListItem, flushList } from './blocks/list.js';
-import { startTable, addTableRow, parseTable, isInTable } from './blocks/table.js';
-import { handleBlockquote, flushBlockquote } from './blocks/blockquote.js';
-import { handleHeading } from './blocks/heading.js';
-import { startOrEndCodeBlock, handleCodeLine, isInCodeBlock } from './blocks/codeBlock.js';
-import { startOrEndMathBlock, handleMathLine, isInMathBlock } from './blocks/mathBlock.js';
-import { startOrEndThreeBlock, handleThreeObject, isInThreeBlock } from './blocks/threeBlock.js';
-import { renderFootnotes } from './footnotes.js';
+// parseMarkdown.js
+// 修复1（核心）：所有块级解析器改为工厂函数调用，
+// 每次 parseMarkdown() 执行时创建全新的解析器实例，
+// 彻底消除模块级单例状态导致的跨次解析状态污染 Bug。
+import { flushParagraph } from './blocks/paragraph.js'
+import { handleListItem, flushList } from './blocks/list.js'
+import { createTableParser } from './blocks/table.js'
+import { createBlockquoteParser } from './blocks/blockquote.js'
+import { handleHeading } from './blocks/heading.js'
+import { createCodeBlockParser } from './blocks/codeBlock.js'
+import { createMathBlockParser } from './blocks/mathBlock.js'
+import { createThreeBlockParser } from './blocks/threeBlock.js'
+import { renderFootnotes } from './footnotes.js'
 
 export default function parseMarkdown(markdownText) {
-  const lines = markdownText.split('\n');
-  const html = [];
-  const listStack = [];
-  const paragraphLines = [];
+  if (!markdownText) return ''
 
-  const footnotes = {};
-  const inlineFootnotes = {};
+  const lines = markdownText.split('\n')
+  const html = []
+  const listStack = []
+  const paragraphLines = []
+  const footnotes = {}
+  const inlineFootnotes = {}
 
-    for (let i = 0; i < lines.length; i++) {
-    let line = lines[i];
+  // 每次调用创建全新的解析器实例，状态完全独立
+  const codeBlock = createCodeBlockParser()
+  const mathBlock = createMathBlockParser()
+  const threeBlock = createThreeBlockParser()
+  const tableParser = createTableParser()
+  const blockquote = createBlockquoteParser()
 
-    // ====== 分割线处理 ======
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+
+    // ====== 分割线 ======
     if (/^(\*\s*\*\s*\*|---|___)\s*$/.test(line)) {
-      flushParagraph(paragraphLines, html, inlineFootnotes);
-      html.push('<hr />');
-      continue;
+      flushParagraph(paragraphLines, html, inlineFootnotes)
+      html.push('<hr />')
+      continue
     }
 
-    // ====== 代码块处理 ======
-    if (startOrEndCodeBlock(line, html)) {
-      flushParagraph(paragraphLines, html, inlineFootnotes);
-      continue;
+    // ====== 代码块 ======
+    if (codeBlock.startOrEnd(line, html)) {
+      flushParagraph(paragraphLines, html, inlineFootnotes)
+      continue
     }
-    if (isInCodeBlock()) {
-      handleCodeLine(line);
-      continue;
-    }
-
-    // ====== 数学公式块处理 ======
-    if (startOrEndMathBlock(line, html)) {
-      flushParagraph(paragraphLines, html, inlineFootnotes);
-      continue;
-    }
-    if (isInMathBlock()) {
-      handleMathLine(line);
-      continue;
+    if (codeBlock.isInBlock()) {
+      codeBlock.handleLine(line)
+      continue
     }
 
-    // ====== Three.js 块处理 ======
-    if (startOrEndThreeBlock(line, html)) {
-      flushParagraph(paragraphLines, html, inlineFootnotes);
-      continue;
+    // ====== 数学公式块 ======
+    if (mathBlock.startOrEnd(line, html)) {
+      flushParagraph(paragraphLines, html, inlineFootnotes)
+      continue
     }
-    if (isInThreeBlock()) {
-      handleThreeObject(line);
-      continue;
+    if (mathBlock.isInBlock()) {
+      mathBlock.handleLine(line)
+      continue
     }
 
-    // ====== 表格处理 ======
+    // ====== Three.js 块 ======
+    if (threeBlock.startOrEnd(line, html)) {
+      flushParagraph(paragraphLines, html, inlineFootnotes)
+      continue
+    }
+    if (threeBlock.isInBlock()) {
+      threeBlock.handleObject(line)
+      continue
+    }
+
+    // ====== 表格 ======
     if (line.trim().startsWith('|')) {
-      flushParagraph(paragraphLines, html, inlineFootnotes);
-      if (!isInTable()) startTable();
-      addTableRow(line);
-      continue;
-    } else if (isInTable()) {
-      parseTable(html);
+      flushParagraph(paragraphLines, html, inlineFootnotes)
+      if (!tableParser.isInTable()) tableParser.start()
+      tableParser.addRow(line)
+      continue
+    } else if (tableParser.isInTable()) {
+      tableParser.parse(html)
     }
 
-    // ====== 标题处理 ======
+    // ====== 标题 ======
     if (handleHeading(line, html)) {
-      flushParagraph(paragraphLines, html, inlineFootnotes);
-      continue;
+      flushParagraph(paragraphLines, html, inlineFootnotes)
+      continue
     }
 
-    // ====== 引用处理 ======
-    if (handleBlockquote(line, html)) {
-      flushParagraph(paragraphLines, html, inlineFootnotes);
-      continue;
+    // ====== 引用 ======
+    if (blockquote.handle(line, html)) {
+      flushParagraph(paragraphLines, html, inlineFootnotes)
+      continue
     }
 
-    // ====== 列表处理 ======
+    // ====== 列表 ======
     if (handleListItem(line, html, listStack)) {
-      flushParagraph(paragraphLines, html, inlineFootnotes);
-      continue;
+      flushParagraph(paragraphLines, html, inlineFootnotes)
+      continue
     }
 
-    // ====== 段落处理（支持多空行）======
+    // ====== 段落（空行处理）======
     if (line.trim() === '') {
-      // 空行：结束当前段落
-      flushParagraph(paragraphLines, html, inlineFootnotes);
-      // 关键修改: 如果列表栈不为空，则在空行处闭合列表
+      flushParagraph(paragraphLines, html, inlineFootnotes)
       if (listStack.length > 0) {
-        flushList(html, listStack);
+        flushList(html, listStack)
       }
-      // 向后统计连续空行数
-      let extraEmptyLines = 0;
-      let j = i + 1;
+
+      // 统计连续空行，插入额外间距
+      let extraEmptyLines = 0
+      let j = i + 1
       while (j < lines.length && lines[j].trim() === '') {
-        extraEmptyLines++;
-        j++;
+        extraEmptyLines++
+        j++
       }
-
-      // 插入 (extraEmptyLines) 个 <p><br></p> 来表示“额外空行”
-      // 如果你想“3个空行显示2个空行”，就用 extraEmptyLines
-      // 因为你已经遇到 1 个空行了，总共 (1 + extraEmptyLines) 个空行
-      // 所以显示 (extraEmptyLines) 个额外间距
       for (let k = 0; k < extraEmptyLines; k++) {
-        html.push('<p><br /></p>');
+        html.push('<p><br /></p>')
       }
-
-      // 跳过已处理的空行
-      i = j - 1; // 因为 for 循环会 +1
-
+      i = j - 1
     } else {
-      paragraphLines.push(line);
+      paragraphLines.push(line)
     }
   }
 
-  // ====== 循环结束后的收尾 ======
-  flushParagraph(paragraphLines, html, inlineFootnotes);
-  flushList(html, listStack);
-  flushBlockquote(html);
+  // ====== 循环结束收尾 ======
+  flushParagraph(paragraphLines, html, inlineFootnotes)
+  flushList(html, listStack)
+  blockquote.flush(html)
+  if (tableParser.isInTable()) tableParser.parse(html)
 
-  if (isInTable()) parseTable(html);
-  if (isInCodeBlock()) startOrEndCodeBlock('```', html);
-  if (isInMathBlock()) startOrEndMathBlock('$$', html);
-  if (isInThreeBlock()) startOrEndThreeBlock(':::', html);
+  // 未闭合的块级元素强制关闭
+  codeBlock.flush(html)
+  mathBlock.flush(html)
+  threeBlock.flush(html)
 
   // 脚注渲染
-  renderFootnotes(html, footnotes, inlineFootnotes);
+  renderFootnotes(html, footnotes, inlineFootnotes)
 
-  return html.join('\n');
+  return html.join('\n')
 }

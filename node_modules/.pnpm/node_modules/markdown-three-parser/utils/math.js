@@ -1,5 +1,6 @@
-import katex from 'katex';
-import { escapeHTML } from './escape.js';
+// utils/math.js
+import katex from 'katex'
+import { escapeHTML } from './escape.js'
 
 export function renderMath(tex, displayMode = false) {
   try {
@@ -7,8 +8,8 @@ export function renderMath(tex, displayMode = false) {
       throwOnError: false,
       displayMode,
       output: 'html'
-    });
+    })
   } catch (e) {
-    return `<code class="katex-error">${escapeHTML(tex)}</code>`;
+    return `<code class="katex-error">${escapeHTML(tex)}</code>`
   }
 }

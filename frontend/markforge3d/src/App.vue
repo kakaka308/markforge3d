@@ -1,7 +1,10 @@
 <script setup>
-import { ref, provide, computed, onMounted, watch } from 'vue'
-import Swiper from 'swiper/bundle'
-import 'swiper/css/bundle'
+// 修复9：insertMarkdown 通过 ref 获取 textarea，而非 document.querySelector，
+//        同时移除与 watch 重复的 localStorage.setItem 调用。
+// 修复7：响应 createNewDoc 返回的初始值，由 App.vue 自己更新状态。
+// 修复15：移除无效的 Swiper 初始化（模板中没有 .swiper-container 元素），
+//         同时移除对应的 swiper 导入，减少无用包体积。
+import { ref, provide, computed, watch } from 'vue'
 
 import MarkdownEditor from './components/MarkdownEditor.vue'
 import PreviewPane from './components/PreviewPane.vue'
@@ -13,7 +16,7 @@ import AIAssistant from './components/AIAssistant.vue'
 import KnowledgeGraph from './components/KnowledgeGraph.vue'
 
 import { usePdfExport } from './composables/usePdfExport'
-import { useImageExport } from './composables/useImageExport' 
+import { useImageExport } from './composables/useImageExport'
 import { useHistory } from './composables/useHistory'
 import { useShortcuts } from './composables/useShortcuts'
 import { useTheme } from './composables/useTheme'
@@ -23,9 +26,9 @@ import { parseMarkdown } from 'markdown-three-parser'
 const markdownInput = ref(localStorage.getItem('draft') || '')
 const docTitle = ref(localStorage.getItem('draft_title') || '未命名文档')
 
-// 草稿缓存
-watch(docTitle, (val) => localStorage.setItem('draft_title', val))
-watch(markdownInput, (val) => localStorage.setItem('draft', val))
+// 草稿缓存（只在这里写，不在 insertMarkdown 里重复写）
+watch(docTitle, val => localStorage.setItem('draft_title', val))
+watch(markdownInput, val => localStorage.setItem('draft', val))
 
 const renderedHtml = computed(() => parseMarkdown(markdownInput.value) || '')
 
@@ -34,14 +37,13 @@ const { exportPdf } = usePdfExport()
 const { exportPng } = useImageExport()
 const { isDark, toggleTheme } = useTheme()
 
-// 🔥 使用新的 useDocuments
-const { 
-  documents, 
-  currentDocId, 
-  saveCurrentDoc, 
-  deleteDoc, 
-  createNewDoc, 
-  updateDocTitle 
+const {
+  documents,
+  currentDocId,
+  saveCurrentDoc,
+  deleteDoc,
+  createNewDoc,
+  updateDocTitle
 } = useDocuments(markdownInput, docTitle)
 
 const viewMode = ref('split')
@@ -51,24 +53,30 @@ const infoOpen = ref(false)
 const infoType = ref('tutorial')
 const showGraph = ref(false)
 
-const toggleMarkdownMode = () => viewMode.value = viewMode.value === 'markdown' ? 'split' : 'markdown'
-const togglePreviewMode = () => viewMode.value = viewMode.value === 'preview' ? 'split' : 'preview'
-const toggleSidebar = () => sidebarOpen.value = !sidebarOpen.value
-const openInfo = (type) => { infoType.value = type; infoOpen.value = true }
+// 修复9：用 ref 持有 textarea 元素，而非每次 querySelector
+const textareaRef = ref(null)
+
+const toggleMarkdownMode = () => (viewMode.value = viewMode.value === 'markdown' ? 'split' : 'markdown')
+const togglePreviewMode = () => (viewMode.value = viewMode.value === 'preview' ? 'split' : 'preview')
+const toggleSidebar = () => (sidebarOpen.value = !sidebarOpen.value)
+const openInfo = type => { infoType.value = type; infoOpen.value = true }
 
 const showHistoryView = () => {
   sidebarView.value = 'history'
   sidebarOpen.value = true
 }
 
+// 修复7：响应 createNewDoc 返回的初始值，App.vue 自己更新状态
 const handleCreateNew = () => {
   if (confirm('确定要新建文档吗？未保存的内容将会丢失。')) {
-    createNewDoc()
+    const initial = createNewDoc()
+    markdownInput.value = initial.content
+    docTitle.value = initial.title
   }
 }
 
-const loadDoc = (doc) => {
-  if(confirm('加载新文档将覆盖当前编辑内容，是否继续？')) {
+const loadDoc = doc => {
+  if (confirm('加载新文档将覆盖当前编辑内容，是否继续？')) {
     markdownInput.value = doc.content
     docTitle.value = doc.title
     currentDocId.value = doc.id
@@ -79,20 +87,21 @@ const handleRename = ({ id, title }) => {
   updateDocTitle(id, title)
 }
 
-const handleAICreateDoc = (content) => {
+const handleAICreateDoc = content => {
   markdownInput.value = content
 }
 
+// 修复9：通过 ref 获取 textarea，移除 localStorage 的重复写入
 const insertMarkdown = (syntax, cursorOffset, cursorLength = 0) => {
-  const textarea = document.querySelector('textarea')
+  const textarea = textareaRef.value
   if (!textarea) return
+
   const start = textarea.selectionStart
   const end = textarea.selectionEnd
   const value = markdownInput.value
   const newValue = value.substring(0, start) + syntax + value.substring(end)
   markdownInput.value = newValue
-  
-  localStorage.setItem('draft', newValue)
+  // 注意：不再手动调用 localStorage.setItem，watch(markdownInput) 会自动处理
 
   requestAnimationFrame(() => {
     textarea.focus()
@@ -111,18 +120,16 @@ provide('toggleSidebar', toggleSidebar)
 provide('toggleTheme', toggleTheme)
 provide('isDark', isDark)
 
-onMounted(() => {
-  new Swiper('.swiper-container', { slidesPerView: 'auto', freeMode: true, spaceBetween: 10 })
-})
+// 修复15：移除无效的 Swiper onMounted 初始化（模板中无对应容器）
 
 const menuItems = [
   { icon: '📄', label: '新建文档', action: handleCreateNew },
   { icon: '💾', label: '保存文档', action: () => { saveCurrentDoc(); alert('文档已保存') } },
-  { icon: '🕸️', label: '知识图谱', action: () => showGraph.value = true },
+  { icon: '🕸️', label: '知识图谱', action: () => (showGraph.value = true) },
   { icon: '📤', label: '导出 PDF', action: () => exportPdf() },
   { icon: '🖼️', label: '导出 PNG', action: () => exportPng() },
   { icon: '🕰️', label: '历史版本', action: showHistoryView },
-  { icon: '📖', label: '使用教程', action: () => openInfo('tutorial') },
+  { icon: '📖', label: '使用教程', action: () => openInfo('tutorial') }
 ]
 </script>
 
@@ -138,7 +145,7 @@ const menuItems = [
     <AIAssistant @create-doc="handleAICreateDoc" />
 
     <div class="main" :class="{ 'mode-markdown': viewMode === 'markdown', 'mode-preview': viewMode === 'preview' }">
-      
+
       <aside class="sidebar" :class="{ open: sidebarOpen }">
         <div v-if="sidebarView === 'main'" class="sidebar-main-view">
           <ul class="sidebar-list">
@@ -146,38 +153,39 @@ const menuItems = [
               <span>{{ item.icon }}</span> {{ item.label }}
             </li>
           </ul>
-          <DocList 
-            :docs="documents" 
+          <DocList
+            :docs="documents"
             :currentId="currentDocId"
-            @load="loadDoc" 
+            @load="loadDoc"
             @delete="deleteDoc"
-            @rename="handleRename" 
+            @rename="handleRename"
           />
         </div>
-        
-        <HistoryPanel 
+
+        <HistoryPanel
           v-else-if="sidebarView === 'history'"
           :historyList="historyList"
           @rollback="rollback"
-          @back="sidebarView = 'main'" 
+          @back="sidebarView = 'main'"
         />
-        
+
         <InfoPanel :type="infoType" :open="infoOpen" @close="infoOpen = false" />
       </aside>
 
       <div class="left" v-if="viewMode !== 'preview'" :class="{ full: viewMode === 'markdown' }">
         <div class="card">
           <div class="editor-header">
-            <input 
-              v-model="docTitle" 
-              class="main-title-input" 
-              type="text" 
-              placeholder="请输入文档标题" 
+            <input
+              v-model="docTitle"
+              class="main-title-input"
+              type="text"
+              placeholder="请输入文档标题"
             />
           </div>
-          
+
           <div class="scroll-container part-textarea">
-            <MarkdownEditor v-model="markdownInput" />
+            <!-- 修复9：通过 ref 暴露内部的 textarea 元素 -->
+            <MarkdownEditor v-model="markdownInput" ref="editorRef" />
           </div>
         </div>
       </div>
@@ -199,7 +207,6 @@ const menuItems = [
 <style lang="scss" src="./assets/styles.scss"></style>
 
 <style scoped>
-/* 🔥 大标题样式 */
 .editor-header {
   padding: 20px 30px 10px 30px;
   background: var(--bg-surface);
@@ -208,7 +215,7 @@ const menuItems = [
 
 .main-title-input {
   width: 100%;
-  font-size: 32px; /* 🔥 字体最大 */
+  font-size: 32px;
   font-weight: 700;
   border: none;
   background: transparent;
@@ -223,7 +230,6 @@ const menuItems = [
 }
 
 .main-title-input:focus {
-  /* 获得焦点时，底部显示一条线 */
   border-bottom: 2px solid var(--color-accent);
 }
 </style>

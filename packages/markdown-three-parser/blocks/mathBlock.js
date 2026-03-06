@@ -1,30 +1,42 @@
-import { renderMath } from '../utils/math.js';
+// blocks/mathBlock.js
+// 修复：改为工厂函数，消除模块级单例状态。
+import { renderMath } from '../utils/math.js'
 
-let inMathBlock = false;
-let mathBlockLines = [];
+export function createMathBlockParser() {
+  let inMathBlock = false
+  let mathBlockLines = []
 
-export function startOrEndMathBlock(line, html) {
-  if (line.trim() !== '$$') return false;
+  return {
+    startOrEnd(line, html) {
+      if (line.trim() !== '$$') return false
 
-  if (inMathBlock) {
-    // 数学公式块结束
-    html.push(renderMath(mathBlockLines.join('\n'), true));
-    inMathBlock = false;
-    mathBlockLines = [];
-  } else {
-    // 数学公式块开始
-    inMathBlock = true;
-    mathBlockLines = [];
+      if (inMathBlock) {
+        html.push(renderMath(mathBlockLines.join('\n'), true))
+        inMathBlock = false
+        mathBlockLines = []
+      } else {
+        inMathBlock = true
+        mathBlockLines = []
+      }
+      return true
+    },
+
+    handleLine(line) {
+      if (!inMathBlock) return false
+      mathBlockLines.push(line)
+      return true
+    },
+
+    isInBlock() {
+      return inMathBlock
+    },
+
+    flush(html) {
+      if (inMathBlock) {
+        html.push(renderMath(mathBlockLines.join('\n'), true))
+        inMathBlock = false
+        mathBlockLines = []
+      }
+    }
   }
-  return true;
-}
-
-export function handleMathLine(line) {
-  if (!inMathBlock) return false;
-  mathBlockLines.push(line);
-  return true;
-}
-
-export function isInMathBlock() {
-  return inMathBlock;
 }
