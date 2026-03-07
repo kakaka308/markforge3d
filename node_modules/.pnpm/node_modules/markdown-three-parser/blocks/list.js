@@ -10,7 +10,7 @@ export function flushList(html, listStack) {
   }
 }
 
-export function handleListItem(line, html, listStack) {
+export function handleListItem(line, html, listStack, lineNo = 0) {
   const match = line.match(/^(\s*)([-*]|\d+\.)\s+(.*)/)
   if (!match) return false
 
@@ -21,7 +21,6 @@ export function handleListItem(line, html, listStack) {
   const isOrdered = /^\d+\./.test(marker)
   const currentTag = isOrdered ? 'ol' : 'ul'
 
-  // 向上回溯，关闭所有比当前层级更深的列表
   while (listStack.length > level + 1) {
     const { tag } = listStack.pop()
     html.push(`</${tag}>`)
@@ -31,7 +30,6 @@ export function handleListItem(line, html, listStack) {
     listStack.push({ tag: currentTag, indent })
     html.push(`<${currentTag}>`)
   } else if (listStack[listStack.length - 1].tag !== currentTag) {
-    // 同层级列表类型切换（有序 ↔ 无序）
     const { tag } = listStack.pop()
     html.push(`</${tag}>`)
     listStack.push({ tag: currentTag, indent })
@@ -40,12 +38,17 @@ export function handleListItem(line, html, listStack) {
 
   const { text: protectedHtmlText, map: htmlMap } = protectHTML(content)
   const { text: protectedCodeText, map: codeMap } = protectCode(protectedHtmlText)
+  // 问题1修复：任务列表不加 disabled，改为用 data-line 让前端 JS 处理点击
   const taskMatch = protectedCodeText.match(/^\[( |x|X)\]\s+(.*)/)
 
   if (taskMatch) {
     const checked = taskMatch[1].toLowerCase() === 'x'
     const text = restoreHTML(restoreCode(escapeHTML(taskMatch[2]), codeMap), htmlMap)
-    html.push(`<li><input type="checkbox" ${checked ? 'checked' : ''} disabled> ${text}</li>`)
+    // 不加 disabled，加 data-line 和 data-task 让 PreviewPane 拦截点击更新 markdown
+    html.push(
+      `<li data-line="${lineNo}" data-task="true">` +
+      `<input type="checkbox" ${checked ? 'checked' : ''} data-line="${lineNo}"> ${text}</li>`
+    )
   } else {
     let processedContent = escapeHTML(protectedCodeText)
     processedContent = processedContent.replace(
@@ -54,7 +57,7 @@ export function handleListItem(line, html, listStack) {
     )
     processedContent = restoreCode(processedContent, codeMap)
     processedContent = restoreHTML(processedContent, htmlMap)
-    html.push(`<li>${processedContent}</li>`)
+    html.push(`<li data-line="${lineNo}">${processedContent}</li>`)
   }
   return true
 }

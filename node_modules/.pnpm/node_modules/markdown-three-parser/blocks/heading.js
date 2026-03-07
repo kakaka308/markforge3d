@@ -4,7 +4,7 @@ import { escapeHTML, protectHTML, restoreHTML } from '../utils/escape.js'
 import { protectCode, restoreCode } from '../utils/code.js'
 import { renderMath } from '../utils/math.js'
 
-export function handleHeading(line, html) {
+export function handleHeading(line, html, lineNo = 0) {
   const headingMatch = line.trim().match(/^(#{1,6})\s+(.*)/)
   if (!headingMatch) return false
 
@@ -23,8 +23,7 @@ export function handleHeading(line, html) {
   processedContent = restoreCode(processedContent, codeMap)
   processedContent = restoreHTML(processedContent, htmlMap)
 
-  // 生成带 id 的锚点，方便目录跳转
   const id = content.trim().replace(/\s+/g, '-').replace(/[^\w\u4e00-\u9fa5-]/g, '').toLowerCase()
-  html.push(`<h${level} id="${id}">${processedContent}</h${level}>`)
+  html.push(`<h${level} id="${id}" data-line="${lineNo}">${processedContent}</h${level}>`)
   return true
 }

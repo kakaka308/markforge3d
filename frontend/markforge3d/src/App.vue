@@ -21,6 +21,7 @@ import { useHistory } from './composables/useHistory'
 import { useShortcuts } from './composables/useShortcuts'
 import { useTheme } from './composables/useTheme'
 import { useDocuments } from './composables/useDocuments'
+import { useScrollSync } from './composables/useScrollSync'
 import { parseMarkdown } from 'markdown-three-parser'
 
 const markdownInput = ref(localStorage.getItem('draft') || '')
@@ -53,8 +54,10 @@ const infoOpen = ref(false)
 const infoType = ref('tutorial')
 const showGraph = ref(false)
 
-// 修复9：用 ref 持有 textarea 元素，而非每次 querySelector
-const textareaRef = ref(null)
+// 滚动容器 ref（问题3：同步滚动）
+const editorScrollRef = ref(null)
+const previewScrollRef = ref(null)
+useScrollSync(editorScrollRef, previewScrollRef, markdownInput)
 
 const toggleMarkdownMode = () => (viewMode.value = viewMode.value === 'markdown' ? 'split' : 'markdown')
 const togglePreviewMode = () => (viewMode.value = viewMode.value === 'preview' ? 'split' : 'preview')
@@ -66,7 +69,6 @@ const showHistoryView = () => {
   sidebarOpen.value = true
 }
 
-// 修复7：响应 createNewDoc 返回的初始值，App.vue 自己更新状态
 const handleCreateNew = () => {
   if (confirm('确定要新建文档吗？未保存的内容将会丢失。')) {
     const initial = createNewDoc()
@@ -91,9 +93,22 @@ const handleAICreateDoc = content => {
   markdownInput.value = content
 }
 
-// 修复9：通过 ref 获取 textarea，移除 localStorage 的重复写入
+// 问题1：任务列表 checkbox 点击，切换对应行的 [ ] / [x]
+const handleTaskToggle = (lineNo) => {
+  const lines = markdownInput.value.split('\n')
+  const line = lines[lineNo]
+  if (!line) return
+  if (/\[x\]/i.test(line)) {
+    lines[lineNo] = line.replace(/\[x\]/i, '[ ]')
+  } else {
+    lines[lineNo] = line.replace(/\[ \]/, '[x]')
+  }
+  markdownInput.value = lines.join('\n')
+}
+
+// insertMarkdown：改回 querySelector（ref 无法穿透子组件 DOM）
 const insertMarkdown = (syntax, cursorOffset, cursorLength = 0) => {
-  const textarea = textareaRef.value
+  const textarea = document.querySelector('.part-textarea textarea')
   if (!textarea) return
 
   const start = textarea.selectionStart
@@ -101,7 +116,6 @@ const insertMarkdown = (syntax, cursorOffset, cursorLength = 0) => {
   const value = markdownInput.value
   const newValue = value.substring(0, start) + syntax + value.substring(end)
   markdownInput.value = newValue
-  // 注意：不再手动调用 localStorage.setItem，watch(markdownInput) 会自动处理
 
   requestAnimationFrame(() => {
     textarea.focus()
@@ -183,9 +197,8 @@ const menuItems = [
             />
           </div>
 
-          <div class="scroll-container part-textarea">
-            <!-- 修复9：通过 ref 暴露内部的 textarea 元素 -->
-            <MarkdownEditor v-model="markdownInput" ref="editorRef" />
+          <div class="scroll-container part-textarea" ref="editorScrollRef">
+            <MarkdownEditor v-model="markdownInput" />
           </div>
         </div>
       </div>
@@ -193,8 +206,8 @@ const menuItems = [
       <div class="right" v-if="viewMode !== 'markdown'" :class="{ full: viewMode === 'preview' }">
         <div class="card">
           <div class="part-title">HTML 预览</div>
-          <div class="scroll-container part-preview preview">
-            <PreviewPane :renderedHtml="renderedHtml" />
+          <div class="scroll-container part-preview preview" ref="previewScrollRef">
+            <PreviewPane :renderedHtml="renderedHtml" @task-toggle="handleTaskToggle" />
           </div>
         </div>
       </div>

@@ -5,11 +5,13 @@ import { escapeHTML } from '../utils/escape.js'
 export function createTableParser() {
   let tableRows = []
   let inTable = false
+  let startLineNo = 0
 
   return {
-    start() {
+    start(lineNo = 0) {
       inTable = true
       tableRows = []
+      startLineNo = lineNo
     },
 
     addRow(line) {
@@ -39,7 +41,7 @@ export function createTableParser() {
         }
       }
 
-      html.push('<table>')
+      html.push(`<table data-line="${startLineNo}">`)
       html.push('<thead><tr>')
       for (let i = 0; i < headers.length; i++) {
         const align = aligns[i] ? ` style="text-align:${aligns[i]}"` : ''

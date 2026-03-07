@@ -18,16 +18,27 @@ export default function parseMarkdown(markdownText) {
   const lines = markdownText.split('\n')
   const html = []
   const listStack = []
+  // paragraphLines 现在存 { text, lineNo } 方便传行号
   const paragraphLines = []
   const footnotes = {}
   const inlineFootnotes = {}
 
-  // 每次调用创建全新的解析器实例，状态完全独立
   const codeBlock = createCodeBlockParser()
   const mathBlock = createMathBlockParser()
   const threeBlock = createThreeBlockParser()
   const tableParser = createTableParser()
   const blockquote = createBlockquoteParser()
+
+  // 给 html 数组最后推入的元素注入 data-line 属性
+  // 找到最后一个 html 元素并在第一个标签上插入属性
+  const injectLine = (lineNo) => {
+    for (let k = html.length - 1; k >= 0; k--) {
+      if (typeof html[k] === 'string' && html[k].startsWith('<') && !html[k].startsWith('</')) {
+        html[k] = html[k].replace(/^(<\w+)/, `$1 data-line="${lineNo}"`)
+        break
+      }
+    }
+  }
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
@@ -36,12 +47,14 @@ export default function parseMarkdown(markdownText) {
     if (/^(\*\s*\*\s*\*|---|___)\s*$/.test(line)) {
       flushParagraph(paragraphLines, html, inlineFootnotes)
       html.push('<hr />')
+      injectLine(i)
       continue
     }
 
     // ====== 代码块 ======
     if (codeBlock.startOrEnd(line, html)) {
       flushParagraph(paragraphLines, html, inlineFootnotes)
+      if (!codeBlock.isInBlock()) injectLine(i) // 结束时注入行号
       continue
     }
     if (codeBlock.isInBlock()) {
@@ -52,6 +65,7 @@ export default function parseMarkdown(markdownText) {
     // ====== 数学公式块 ======
     if (mathBlock.startOrEnd(line, html)) {
       flushParagraph(paragraphLines, html, inlineFootnotes)
+      if (!mathBlock.isInBlock()) injectLine(i)
       continue
     }
     if (mathBlock.isInBlock()) {
@@ -62,6 +76,7 @@ export default function parseMarkdown(markdownText) {
     // ====== Three.js 块 ======
     if (threeBlock.startOrEnd(line, html)) {
       flushParagraph(paragraphLines, html, inlineFootnotes)
+      if (!threeBlock.isInBlock()) injectLine(i)
       continue
     }
     if (threeBlock.isInBlock()) {
@@ -72,27 +87,27 @@ export default function parseMarkdown(markdownText) {
     // ====== 表格 ======
     if (line.trim().startsWith('|')) {
       flushParagraph(paragraphLines, html, inlineFootnotes)
-      if (!tableParser.isInTable()) tableParser.start()
+      if (!tableParser.isInTable()) tableParser.start(i)
       tableParser.addRow(line)
       continue
     } else if (tableParser.isInTable()) {
       tableParser.parse(html)
     }
 
-    // ====== 标题 ======
-    if (handleHeading(line, html)) {
+    // ====== 引用（必须在标题之前，否则 "> ## 标题" 会被标题拦截）======
+    if (blockquote.handle(line, html, i)) {
       flushParagraph(paragraphLines, html, inlineFootnotes)
       continue
     }
 
-    // ====== 引用 ======
-    if (blockquote.handle(line, html)) {
+    // ====== 标题 ======
+    if (handleHeading(line, html, i)) {
       flushParagraph(paragraphLines, html, inlineFootnotes)
       continue
     }
 
     // ====== 列表 ======
-    if (handleListItem(line, html, listStack)) {
+    if (handleListItem(line, html, listStack, i)) {
       flushParagraph(paragraphLines, html, inlineFootnotes)
       continue
     }
@@ -100,11 +115,9 @@ export default function parseMarkdown(markdownText) {
     // ====== 段落（空行处理）======
     if (line.trim() === '') {
       flushParagraph(paragraphLines, html, inlineFootnotes)
-      if (listStack.length > 0) {
-        flushList(html, listStack)
-      }
+      if (listStack.length > 0) flushList(html, listStack)
+      blockquote.flush(html)
 
-      // 统计连续空行，插入额外间距
       let extraEmptyLines = 0
       let j = i + 1
       while (j < lines.length && lines[j].trim() === '') {
@@ -116,22 +129,18 @@ export default function parseMarkdown(markdownText) {
       }
       i = j - 1
     } else {
-      paragraphLines.push(line)
+      paragraphLines.push({ text: line, lineNo: i })
     }
   }
 
-  // ====== 循环结束收尾 ======
   flushParagraph(paragraphLines, html, inlineFootnotes)
   flushList(html, listStack)
   blockquote.flush(html)
   if (tableParser.isInTable()) tableParser.parse(html)
-
-  // 未闭合的块级元素强制关闭
   codeBlock.flush(html)
   mathBlock.flush(html)
   threeBlock.flush(html)
 
-  // 脚注渲染
   renderFootnotes(html, footnotes, inlineFootnotes)
 
   return html.join('\n')

@@ -1,0 +1,91 @@
+// src/composables/useScrollSync.js
+import { onMounted, onBeforeUnmount, nextTick } from 'vue'
+
+export function useScrollSync(editorScrollRef, previewScrollRef) {
+  // 编辑器侧真正滚动的是 textarea，预览侧是 .scroll-container div
+  let textareaEl = null
+  let previewEl = null
+
+  let syncingFromEditor = false
+  let syncingFromPreview = false
+
+  const getTopInContainer = (el, container) => {
+    return el.getBoundingClientRect().top
+      - container.getBoundingClientRect().top
+      + container.scrollTop
+  }
+
+  const onEditorScroll = () => {
+    if (syncingFromPreview || !textareaEl || !previewEl) return
+    syncingFromEditor = true
+
+    const scrollableH = textareaEl.scrollHeight - textareaEl.clientHeight
+    if (scrollableH <= 0) { syncingFromEditor = false; return }
+
+    const lineEls = previewEl.querySelectorAll('[data-line]')
+    if (lineEls.length === 0) {
+      const ratio = textareaEl.scrollTop / scrollableH
+      previewEl.scrollTop = ratio * (previewEl.scrollHeight - previewEl.clientHeight)
+    } else {
+      const lineHeight = parseFloat(getComputedStyle(textareaEl).lineHeight) || 24
+      const currentLine = Math.floor(textareaEl.scrollTop / lineHeight)
+
+      let best = lineEls[0]
+      let bestDiff = Infinity
+      lineEls.forEach(el => {
+        const diff = Math.abs(parseInt(el.dataset.line) - currentLine)
+        if (diff < bestDiff) { bestDiff = diff; best = el }
+      })
+
+      previewEl.scrollTop = Math.max(0, getTopInContainer(best, previewEl) - 16)
+    }
+
+    setTimeout(() => { syncingFromEditor = false }, 80)
+  }
+
+  const onPreviewScroll = () => {
+    if (syncingFromEditor || !textareaEl || !previewEl) return
+    syncingFromPreview = true
+
+    const lineEls = previewEl.querySelectorAll('[data-line]')
+    if (lineEls.length === 0) {
+      const ratio = previewEl.scrollTop / (previewEl.scrollHeight - previewEl.clientHeight || 1)
+      textareaEl.scrollTop = ratio * (textareaEl.scrollHeight - textareaEl.clientHeight)
+    } else {
+      let nearestLine = 0
+      for (const el of lineEls) {
+        const top = getTopInContainer(el, previewEl) - previewEl.scrollTop
+        if (top >= -8) { nearestLine = parseInt(el.dataset.line); break }
+      }
+      const lineHeight = parseFloat(getComputedStyle(textareaEl).lineHeight) || 24
+      textareaEl.scrollTop = Math.max(0, nearestLine * lineHeight - 16)
+    }
+
+    setTimeout(() => { syncingFromPreview = false }, 80)
+  }
+
+  const bind = () => {
+    nextTick(() => {
+      textareaEl = editorScrollRef.value?.querySelector('textarea') ?? null
+      previewEl = previewScrollRef.value ?? null
+
+      if (!textareaEl || !previewEl) {
+        console.warn('[useScrollSync] 未找到滚动元素')
+        return
+      }
+
+      textareaEl.addEventListener('scroll', onEditorScroll, { passive: true })
+      previewEl.addEventListener('scroll', onPreviewScroll, { passive: true })
+    })
+  }
+
+  const unbind = () => {
+    textareaEl?.removeEventListener('scroll', onEditorScroll)
+    previewEl?.removeEventListener('scroll', onPreviewScroll)
+  }
+
+  onMounted(bind)
+  onBeforeUnmount(unbind)
+
+  return { bind, unbind }
+}

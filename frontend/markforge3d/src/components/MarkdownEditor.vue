@@ -23,5 +23,6 @@ textarea {
   resize: none;
   font-family: monospace;
   height: 100%;
+  overflow-y: auto;
 }
 </style>

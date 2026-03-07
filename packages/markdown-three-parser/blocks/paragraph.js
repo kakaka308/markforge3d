@@ -86,12 +86,12 @@ export function parseInline(text, inlineFootnotes) {
 export function flushParagraph(paragraphLines, html, inlineFootnotes) {
   if (paragraphLines.length === 0) return
 
-  let text = paragraphLines.join('\n')
+  const firstLineNo = paragraphLines[0].lineNo ?? 0
+  const text = paragraphLines.map(l => (typeof l === 'string' ? l : l.text)).join('\n')
   let processedText = parseInline(text, inlineFootnotes)
 
-  // 段落内换行转 <br>
   processedText = processedText.replace(/\n/g, '<br />')
 
-  html.push(`<p>${processedText}</p>`)
+  html.push(`<p data-line="${firstLineNo}">${processedText}</p>`)
   paragraphLines.length = 0
 }
