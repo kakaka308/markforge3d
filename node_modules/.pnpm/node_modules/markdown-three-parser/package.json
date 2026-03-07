@@ -2,6 +2,7 @@
   "name": "markdown-three-parser",
   "version": "1.0.0",
   "description": "A parser for 3D markdown with math support",
+  "type": "module",
   "main": "dist/markdown-three-parser.umd.js",
   "module": "dist/markdown-three-parser.es.js",
   "exports": {
@@ -10,20 +11,16 @@
       "require": "./dist/markdown-three-parser.umd.js"
     }
   },
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "scripts": {
     "build": "vite build",
-    "dev": "vite build --watch"
+    "dev": "vite build --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
-  "keywords": [
-    "markdown",
-    "parser",
-    "3d",
-    "math"
-  ],
-  "author": "",
+  "keywords": ["markdown", "parser", "3d", "math"],
+  "author": "Your Name",
   "license": "MIT",
   "packageManager": "pnpm@10.12.4",
   "dependencies": {
@@ -31,6 +28,7 @@
     "prismjs": "^1.30.0"
   },
   "devDependencies": {
-    "vite": "^7.1.1"
+    "vitest": "^2.1.9",
+    "@vitest/coverage-v8": "^2.1.9"
   }
 }
