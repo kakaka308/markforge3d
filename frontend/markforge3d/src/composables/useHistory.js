@@ -1,36 +1,41 @@
 // src/composables/useHistory.js
-// 修复8：将 watch 改为 debounce 版本（500ms），用户停止输入后才记录历史，
-//        避免每次按键都执行 diff 检查，减少不必要的开销。
-//        注意：需要安装 @vueuse/core（pnpm add @vueuse/core）
+// 修复：历史记录同时保存 title，回滚时一并恢复，避免回滚后标题停留在当前值。
 import { ref } from 'vue'
 import { watchDebounced } from '@vueuse/core'
 
-export function useHistory(markdownInput) {
+export function useHistory(markdownInput, docTitle) {
   const historyList = ref([])
   const showHistory = ref(false)
 
   const addHistory = () => {
     const last = historyList.value[historyList.value.length - 1]
-    if (!last || last.content !== markdownInput.value) {
-      historyList.value.push({
-        timestamp: new Date().toLocaleString(),
-        content: markdownInput.value
-      })
-      // 最多保留 50 条
+    const snapshot = {
+      timestamp: new Date().toLocaleString(),
+      content:   markdownInput.value,
+      title:     docTitle?.value ?? ''
+    }
+    // 内容和标题都没变则不重复记录
+    if (!last || last.content !== snapshot.content || last.title !== snapshot.title) {
+      historyList.value.push(snapshot)
       if (historyList.value.length > 50) historyList.value.shift()
     }
   }
 
   const rollback = (item) => {
-    if (item) markdownInput.value = item.content
+    if (!item) return
+    markdownInput.value = item.content
+    if (docTitle && item.title !== undefined) {
+      docTitle.value = item.title
+    }
   }
 
-  const toggleHistory = () => {
-    showHistory.value = !showHistory.value
-  }
+  const toggleHistory = () => { showHistory.value = !showHistory.value }
 
-  // 修复8：debounce 500ms，用户停止输入后才记录，立即执行一次获取初始值
+  // 内容或标题变化后 500ms 记录一次
   watchDebounced(markdownInput, addHistory, { debounce: 500, immediate: true })
+  if (docTitle) {
+    watchDebounced(docTitle, addHistory, { debounce: 500 })
+  }
 
   return { historyList, addHistory, rollback, showHistory, toggleHistory }
 }

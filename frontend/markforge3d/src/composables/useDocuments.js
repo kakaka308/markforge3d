@@ -1,13 +1,14 @@
 // src/composables/useDocuments.js
-// 修复7：移除在 composable 内部直接对外部传入 ref 赋值的反模式（违反单向数据流）。
-//        createNewDoc 改为返回初始值对象，由 App.vue 自行更新状态。
+// 修复：新增自动保存，编辑内容停止 2s 后自动更新文档列表，
+// 避免用户忘记点保存导致内容丢失。
 import { ref, watch } from 'vue'
+import { watchDebounced } from '@vueuse/core'
 import { nanoid } from 'nanoid'
 
 const STORAGE_KEY = 'markforge_docs'
 
 export function useDocuments(currentContent, currentTitle) {
-  const documents = ref([])
+  const documents    = ref([])
   const currentDocId = ref(null)
 
   const loadDocs = () => {
@@ -28,12 +29,12 @@ export function useDocuments(currentContent, currentTitle) {
     }
   }
 
-  // 监听标题变化，实时同步到文档列表
+  // 标题变化实时同步到文档列表
   watch(currentTitle, (newTitle) => {
     if (!currentDocId.value) return
     const doc = documents.value.find(d => d.id === currentDocId.value)
     if (doc) {
-      doc.title = newTitle.trim() || '未命名文档'
+      doc.title     = newTitle.trim() || '未命名文档'
       doc.updatedAt = new Date().toLocaleString()
       saveToStorage()
     }
@@ -43,7 +44,7 @@ export function useDocuments(currentContent, currentTitle) {
     if (!currentContent.value && !currentTitle.value) return
 
     const title = currentTitle.value.trim() || '未命名文档'
-    const now = new Date().toLocaleString()
+    const now   = new Date().toLocaleString()
 
     if (currentDocId.value) {
       const index = documents.value.findIndex(d => d.id === currentDocId.value)
@@ -51,11 +52,12 @@ export function useDocuments(currentContent, currentTitle) {
         documents.value[index] = {
           ...documents.value[index],
           title,
-          content: currentContent.value,
+          content:   currentContent.value,
           updatedAt: now
         }
-        const updatedDoc = documents.value.splice(index, 1)[0]
-        documents.value.unshift(updatedDoc)
+        // 置顶最近编辑的文档
+        const updated = documents.value.splice(index, 1)[0]
+        documents.value.unshift(updated)
       } else {
         _createInternal(title, now)
       }
@@ -67,22 +69,31 @@ export function useDocuments(currentContent, currentTitle) {
 
   const _createInternal = (title, time) => {
     const newDoc = {
-      id: nanoid(),
+      id:        nanoid(),
       title,
-      content: currentContent.value,
+      content:   currentContent.value,
       createdAt: time
     }
     documents.value.unshift(newDoc)
     currentDocId.value = newDoc.id
   }
 
-  // 修复7：不再直接修改外部传入的 ref，改为返回新文档的初始值，
-  //        由调用方（App.vue）决定如何更新自己的状态。
+  // 自动保存：内容停止编辑 2s 后自动保存到文档列表
+  // 只在有 currentDocId（已有文档）或有内容时才触发，避免空文档写入列表
+  watchDebounced(
+    currentContent,
+    () => {
+      if (currentContent.value || currentDocId.value) {
+        saveCurrentDoc()
+      }
+    },
+    { debounce: 2000 }
+  )
+
   const createNewDoc = () => {
     currentDocId.value = null
     localStorage.removeItem('draft')
     localStorage.removeItem('draft_title')
-    // 返回初始值，由 App.vue 响应
     return { content: '', title: '未命名文档' }
   }
 

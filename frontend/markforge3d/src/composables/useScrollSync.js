@@ -1,12 +1,13 @@
 // src/composables/useScrollSync.js
-import { onMounted, onBeforeUnmount, nextTick } from 'vue'
+// 修复：接收第三个参数 markdownInput，内容变化后 nextTick 重新把预览
+// 滚动到和编辑器当前行对齐，解决内容更新后预览位置错位的问题。
+import { onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 
-export function useScrollSync(editorScrollRef, previewScrollRef) {
-  // 编辑器侧真正滚动的是 textarea，预览侧是 .scroll-container div
+export function useScrollSync(editorScrollRef, previewScrollRef, markdownInput) {
   let textareaEl = null
-  let previewEl = null
+  let previewEl  = null
 
-  let syncingFromEditor = false
+  let syncingFromEditor  = false
   let syncingFromPreview = false
 
   const getTopInContainer = (el, container) => {
@@ -15,12 +16,10 @@ export function useScrollSync(editorScrollRef, previewScrollRef) {
       + container.scrollTop
   }
 
-  const onEditorScroll = () => {
-    if (syncingFromPreview || !textareaEl || !previewEl) return
-    syncingFromEditor = true
-
+  const syncEditorToPreview = () => {
+    if (!textareaEl || !previewEl) return
     const scrollableH = textareaEl.scrollHeight - textareaEl.clientHeight
-    if (scrollableH <= 0) { syncingFromEditor = false; return }
+    if (scrollableH <= 0) return
 
     const lineEls = previewEl.querySelectorAll('[data-line]')
     if (lineEls.length === 0) {
@@ -39,7 +38,12 @@ export function useScrollSync(editorScrollRef, previewScrollRef) {
 
       previewEl.scrollTop = Math.max(0, getTopInContainer(best, previewEl) - 16)
     }
+  }
 
+  const onEditorScroll = () => {
+    if (syncingFromPreview) return
+    syncingFromEditor = true
+    syncEditorToPreview()
     setTimeout(() => { syncingFromEditor = false }, 80)
   }
 
@@ -67,7 +71,7 @@ export function useScrollSync(editorScrollRef, previewScrollRef) {
   const bind = () => {
     nextTick(() => {
       textareaEl = editorScrollRef.value?.querySelector('textarea') ?? null
-      previewEl = previewScrollRef.value ?? null
+      previewEl  = previewScrollRef.value ?? null
 
       if (!textareaEl || !previewEl) {
         console.warn('[useScrollSync] 未找到滚动元素')
@@ -86,6 +90,17 @@ export function useScrollSync(editorScrollRef, previewScrollRef) {
 
   onMounted(bind)
   onBeforeUnmount(unbind)
+
+  // 修复：内容变化后，等预览 DOM 更新完再把预览滚到编辑器当前行
+  // 用 watch 而不是 watchEffect，避免初始化时多余触发
+  if (markdownInput) {
+    watch(markdownInput, () => {
+      nextTick(() => {
+        syncingFromPreview = false  // 确保不被防抖 flag 拦截
+        syncEditorToPreview()
+      })
+    })
+  }
 
   return { bind, unbind }
 }

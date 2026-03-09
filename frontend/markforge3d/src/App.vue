@@ -1,5 +1,7 @@
 <script setup>
-import { ref, provide, computed, watch } from 'vue'
+import { ref, provide, watch } from 'vue'
+import { watchDebounced } from '@vueuse/core'
+import { ElMessage } from 'element-plus'
 
 import MarkdownEditor from './components/MarkdownEditor.vue'
 import PreviewPane from './components/PreviewPane.vue'
@@ -20,16 +22,24 @@ import { useScrollSync } from './composables/useScrollSync'
 import { parseMarkdown } from 'markdown-three-parser'
 
 const markdownInput = ref(localStorage.getItem('draft') || '')
-const docTitle = ref(localStorage.getItem('draft_title') || '未命名文档')
+const docTitle      = ref(localStorage.getItem('draft_title') || '未命名文档')
 
-watch(docTitle, val => localStorage.setItem('draft_title', val))
+watch(docTitle,      val => localStorage.setItem('draft_title', val))
 watch(markdownInput, val => localStorage.setItem('draft', val))
 
-const renderedHtml = computed(() => parseMarkdown(markdownInput.value) || '')
+// 修复：computed 改为 watchDebounced，用户停止输入 200ms 后才重新解析。
+// 避免每次按键都触发全量解析，长文档时明显减少卡顿。
+// immediate:true 保证初始渲染正常。
+const renderedHtml = ref(parseMarkdown(markdownInput.value) || '')
+watchDebounced(
+  markdownInput,
+  val => { renderedHtml.value = parseMarkdown(val) || '' },
+  { debounce: 200, immediate: false }
+)
 
-const { historyList, addHistory, rollback } = useHistory(markdownInput)
-const { exportPdf } = usePdfExport()
-const { exportPng } = useImageExport()
+const { historyList, addHistory, rollback } = useHistory(markdownInput, docTitle)
+const { exportPdf }  = usePdfExport()
+const { exportPng }  = useImageExport()
 const { isDark, toggleTheme } = useTheme()
 
 const {
@@ -41,20 +51,22 @@ const {
   updateDocTitle
 } = useDocuments(markdownInput, docTitle)
 
-const viewMode = ref('split')
+const viewMode    = ref('split')
 const sidebarOpen = ref(false)
 const sidebarView = ref('main')
-const infoOpen = ref(false)
-const infoType = ref('tutorial')
-const showGraph = ref(false)
+const infoOpen    = ref(false)
+const infoType    = ref('tutorial')
+const showGraph   = ref(false)
 
-const editorScrollRef = ref(null)
+const editorScrollRef  = ref(null)
 const previewScrollRef = ref(null)
+
+// 修复：传入 markdownInput，内容变化后滚动同步会重新对齐
 useScrollSync(editorScrollRef, previewScrollRef, markdownInput)
 
 const toggleMarkdownMode = () => (viewMode.value = viewMode.value === 'markdown' ? 'split' : 'markdown')
-const togglePreviewMode = () => (viewMode.value = viewMode.value === 'preview' ? 'split' : 'preview')
-const toggleSidebar = () => (sidebarOpen.value = !sidebarOpen.value)
+const togglePreviewMode  = () => (viewMode.value = viewMode.value === 'preview'  ? 'split' : 'preview')
+const toggleSidebar      = () => (sidebarOpen.value = !sidebarOpen.value)
 const openInfo = type => { infoType.value = type; infoOpen.value = true }
 
 const showHistoryView = () => {
@@ -66,23 +78,20 @@ const handleCreateNew = () => {
   if (confirm('确定要新建文档吗？未保存的内容将会丢失。')) {
     const initial = createNewDoc()
     markdownInput.value = initial.content
-    docTitle.value = initial.title
+    docTitle.value      = initial.title
   }
 }
 
 const loadDoc = doc => {
   if (confirm('加载新文档将覆盖当前编辑内容，是否继续？')) {
-    markdownInput.value = doc.content
-    docTitle.value = doc.title
-    currentDocId.value = doc.id
+    markdownInput.value  = doc.content
+    docTitle.value       = doc.title
+    currentDocId.value   = doc.id
   }
 }
 
-const handleRename = ({ id, title }) => {
-  updateDocTitle(id, title)
-}
+const handleRename = ({ id, title }) => updateDocTitle(id, title)
 
-// 修复：AIAssistant emit 的是 { title, content } 对象，不再是字符串
 const handleAICreateDoc = ({ title, content } = {}) => {
   if (!content) return
   if (title) docTitle.value = title
@@ -91,13 +100,11 @@ const handleAICreateDoc = ({ title, content } = {}) => {
 
 const handleTaskToggle = (lineNo) => {
   const lines = markdownInput.value.split('\n')
-  const line = lines[lineNo]
+  const line  = lines[lineNo]
   if (!line) return
-  if (/\[x\]/i.test(line)) {
-    lines[lineNo] = line.replace(/\[x\]/i, '[ ]')
-  } else {
-    lines[lineNo] = line.replace(/\[ \]/, '[x]')
-  }
+  lines[lineNo] = /\[x\]/i.test(line)
+    ? line.replace(/\[x\]/i, '[ ]')
+    : line.replace(/\[ \]/, '[x]')
   markdownInput.value = lines.join('\n')
 }
 
@@ -105,39 +112,38 @@ const insertMarkdown = (syntax, cursorOffset, cursorLength = 0) => {
   const textarea = document.querySelector('.part-textarea textarea')
   if (!textarea) return
 
-  const start = textarea.selectionStart
-  const end = textarea.selectionEnd
-  const value = markdownInput.value
-  const newValue = value.substring(0, start) + syntax + value.substring(end)
-  markdownInput.value = newValue
+  const start    = textarea.selectionStart
+  const end      = textarea.selectionEnd
+  const value    = markdownInput.value
+  markdownInput.value = value.substring(0, start) + syntax + value.substring(end)
 
   requestAnimationFrame(() => {
     textarea.focus()
     textarea.selectionStart = start + cursorOffset
-    textarea.selectionEnd = start + cursorOffset + cursorLength
+    textarea.selectionEnd   = start + cursorOffset + cursorLength
   })
 }
 
 useShortcuts({ addHistory, toggleHistory: showHistoryView, exportPdf, insertMarkdown })
 
-provide('markdownInput', markdownInput)
-provide('docTitle', docTitle)           // ← 新增：AIAssistant 覆盖模式同步标题
-provide('insertMarkdown', insertMarkdown)
-provide('toggleMarkdownMode', toggleMarkdownMode)
-provide('togglePreviewMode', togglePreviewMode)
-provide('viewMode', viewMode)
-provide('toggleSidebar', toggleSidebar)
-provide('toggleTheme', toggleTheme)
-provide('isDark', isDark)
+provide('markdownInput',       markdownInput)
+provide('docTitle',            docTitle)
+provide('insertMarkdown',      insertMarkdown)
+provide('toggleMarkdownMode',  toggleMarkdownMode)
+provide('togglePreviewMode',   togglePreviewMode)
+provide('viewMode',            viewMode)
+provide('toggleSidebar',       toggleSidebar)
+provide('toggleTheme',         toggleTheme)
+provide('isDark',              isDark)
 
 const menuItems = [
-  { icon: '📄', label: '新建文档', action: handleCreateNew },
-  { icon: '💾', label: '保存文档', action: () => { saveCurrentDoc(); alert('文档已保存') } },
-  { icon: '🕸️', label: '知识图谱', action: () => (showGraph.value = true) },
-  { icon: '📤', label: '导出 PDF', action: () => exportPdf() },
-  { icon: '🖼️', label: '导出 PNG', action: () => exportPng() },
-  { icon: '🕰️', label: '历史版本', action: showHistoryView },
-  { icon: '📖', label: '使用教程', action: () => openInfo('tutorial') }
+  { icon: '📄', label: '新建文档',   action: handleCreateNew },
+  { icon: '💾', label: '保存文档',   action: () => { saveCurrentDoc(); ElMessage.success('文档已保存') } },
+  { icon: '🕸️', label: '知识图谱',   action: () => (showGraph.value = true) },
+  { icon: '📤', label: '导出 PDF',   action: () => exportPdf() },
+  { icon: '🖼️', label: '导出 PNG',   action: () => exportPng() },
+  { icon: '🕰️', label: '历史版本',   action: showHistoryView },
+  { icon: '📖', label: '使用教程',   action: () => openInfo('tutorial') }
 ]
 </script>
 
