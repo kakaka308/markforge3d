@@ -125,7 +125,7 @@ const insertMarkdown = (syntax, cursorOffset, cursorLength = 0) => {
 }
 
 useShortcuts({ addHistory, toggleHistory: showHistoryView, exportPdf, insertMarkdown })
-
+provide('markdownInput', markdownInput) 
 provide('insertMarkdown', insertMarkdown)
 provide('toggleMarkdownMode', toggleMarkdownMode)
 provide('togglePreviewMode', togglePreviewMode)
