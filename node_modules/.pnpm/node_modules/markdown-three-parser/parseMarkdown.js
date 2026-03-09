@@ -1,7 +1,4 @@
 // parseMarkdown.js
-// 修复1（核心）：所有块级解析器改为工厂函数调用，
-// 每次 parseMarkdown() 执行时创建全新的解析器实例，
-// 彻底消除模块级单例状态导致的跨次解析状态污染 Bug。
 import { flushParagraph } from './blocks/paragraph.js'
 import { handleListItem, flushList } from './blocks/list.js'
 import { createTableParser } from './blocks/table.js'
@@ -18,19 +15,17 @@ export default function parseMarkdown(markdownText) {
   const lines = markdownText.split('\n')
   const html = []
   const listStack = []
-  // paragraphLines 现在存 { text, lineNo } 方便传行号
   const paragraphLines = []
   const footnotes = {}
   const inlineFootnotes = {}
 
-  const codeBlock = createCodeBlockParser()
-  const mathBlock = createMathBlockParser()
-  const threeBlock = createThreeBlockParser()
+  const codeBlock   = createCodeBlockParser()
+  const mathBlock   = createMathBlockParser()
+  const threeBlock  = createThreeBlockParser()
   const tableParser = createTableParser()
-  const blockquote = createBlockquoteParser()
+  const blockquote  = createBlockquoteParser()
 
-  // 给 html 数组最后推入的元素注入 data-line 属性
-  // 找到最后一个 html 元素并在第一个标签上插入属性
+  // 在最后推入的开始标签上注入 data-line 属性
   const injectLine = (lineNo) => {
     for (let k = html.length - 1; k >= 0; k--) {
       if (typeof html[k] === 'string' && html[k].startsWith('<') && !html[k].startsWith('</')) {
@@ -54,7 +49,7 @@ export default function parseMarkdown(markdownText) {
     // ====== 代码块 ======
     if (codeBlock.startOrEnd(line, html)) {
       flushParagraph(paragraphLines, html, inlineFootnotes)
-      if (!codeBlock.isInBlock()) injectLine(i) // 结束时注入行号
+      if (!codeBlock.isInBlock()) injectLine(i)
       continue
     }
     if (codeBlock.isInBlock()) {
@@ -95,8 +90,12 @@ export default function parseMarkdown(markdownText) {
     }
 
     // ====== 引用（必须在标题之前，否则 "> ## 标题" 会被标题拦截）======
-    if (blockquote.handle(line, html, i)) {
+    // 修复：先 flush paragraph 再调用 handle，
+    // 否则引用前的段落文字不会及时输出到 html
+    if (/^>/.test(line.trimStart())) {
       flushParagraph(paragraphLines, html, inlineFootnotes)
+    }
+    if (blockquote.handle(line, html, i)) {
       continue
     }
 
@@ -112,7 +111,7 @@ export default function parseMarkdown(markdownText) {
       continue
     }
 
-    // ====== 段落（空行处理）======
+    // ====== 空行 ======
     if (line.trim() === '') {
       flushParagraph(paragraphLines, html, inlineFootnotes)
       if (listStack.length > 0) flushList(html, listStack)

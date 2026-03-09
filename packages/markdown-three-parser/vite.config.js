@@ -1,25 +1,25 @@
-import { defineConfig } from 'vitest/config'
-import { fileURLToPath } from 'url'
-import { resolve, dirname } from 'path'
-
-const __dirname = dirname(fileURLToPath(import.meta.url))
-const mock = (name) => resolve(__dirname, `src/__mocks__/${name}`)
+// vite.config.js — 库模式构建配置
+// 测试配置在 vitest.config.js，两者分开避免互相干扰
+import { defineConfig } from 'vite'
+import { resolve } from 'path'
 
 export default defineConfig({
-  test: {
-    environment: 'node',
-    alias: [
-      // 先匹配语言包（更具体的规则放前面）
-      { find: /^prismjs\/components\/.*$/, replacement: mock('prismjs-lang.js') },
-      // 再匹配主包
-      { find: 'prismjs', replacement: mock('prismjs.js') },
-      { find: 'katex',   replacement: mock('katex.js') },
-    ],
-    coverage: {
-      provider: 'v8',
-      reporter: ['text', 'html'],
-      include: ['*.js', 'blocks/**/*.js', 'utils/**/*.js'],
-      exclude: ['vite.config.js', 'src/__mocks__/**']
+  build: {
+    lib: {
+      entry: resolve(__dirname, 'index.js'),
+      name: 'MarkdownThreeParser',
+      fileName: (format) => `markdown-three-parser.${format}.js`,
+      formats: ['es', 'umd']
+    },
+    rollupOptions: {
+      // 声明外部依赖，不打包进产物
+      external: ['katex', 'prismjs'],
+      output: {
+        globals: {
+          katex: 'katex',
+          prismjs: 'Prism'
+        }
+      }
     }
   }
 })

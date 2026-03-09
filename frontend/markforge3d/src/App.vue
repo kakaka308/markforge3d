@@ -1,9 +1,4 @@
 <script setup>
-// 修复9：insertMarkdown 通过 ref 获取 textarea，而非 document.querySelector，
-//        同时移除与 watch 重复的 localStorage.setItem 调用。
-// 修复7：响应 createNewDoc 返回的初始值，由 App.vue 自己更新状态。
-// 修复15：移除无效的 Swiper 初始化（模板中没有 .swiper-container 元素），
-//         同时移除对应的 swiper 导入，减少无用包体积。
 import { ref, provide, computed, watch } from 'vue'
 
 import MarkdownEditor from './components/MarkdownEditor.vue'
@@ -27,7 +22,6 @@ import { parseMarkdown } from 'markdown-three-parser'
 const markdownInput = ref(localStorage.getItem('draft') || '')
 const docTitle = ref(localStorage.getItem('draft_title') || '未命名文档')
 
-// 草稿缓存（只在这里写，不在 insertMarkdown 里重复写）
 watch(docTitle, val => localStorage.setItem('draft_title', val))
 watch(markdownInput, val => localStorage.setItem('draft', val))
 
@@ -54,7 +48,6 @@ const infoOpen = ref(false)
 const infoType = ref('tutorial')
 const showGraph = ref(false)
 
-// 滚动容器 ref（问题3：同步滚动）
 const editorScrollRef = ref(null)
 const previewScrollRef = ref(null)
 useScrollSync(editorScrollRef, previewScrollRef, markdownInput)
@@ -89,11 +82,13 @@ const handleRename = ({ id, title }) => {
   updateDocTitle(id, title)
 }
 
-const handleAICreateDoc = content => {
+// 修复：AIAssistant emit 的是 { title, content } 对象，不再是字符串
+const handleAICreateDoc = ({ title, content } = {}) => {
+  if (!content) return
+  if (title) docTitle.value = title
   markdownInput.value = content
 }
 
-// 问题1：任务列表 checkbox 点击，切换对应行的 [ ] / [x]
 const handleTaskToggle = (lineNo) => {
   const lines = markdownInput.value.split('\n')
   const line = lines[lineNo]
@@ -106,7 +101,6 @@ const handleTaskToggle = (lineNo) => {
   markdownInput.value = lines.join('\n')
 }
 
-// insertMarkdown：改回 querySelector（ref 无法穿透子组件 DOM）
 const insertMarkdown = (syntax, cursorOffset, cursorLength = 0) => {
   const textarea = document.querySelector('.part-textarea textarea')
   if (!textarea) return
@@ -125,7 +119,9 @@ const insertMarkdown = (syntax, cursorOffset, cursorLength = 0) => {
 }
 
 useShortcuts({ addHistory, toggleHistory: showHistoryView, exportPdf, insertMarkdown })
-provide('markdownInput', markdownInput) 
+
+provide('markdownInput', markdownInput)
+provide('docTitle', docTitle)           // ← 新增：AIAssistant 覆盖模式同步标题
 provide('insertMarkdown', insertMarkdown)
 provide('toggleMarkdownMode', toggleMarkdownMode)
 provide('togglePreviewMode', togglePreviewMode)
@@ -133,8 +129,6 @@ provide('viewMode', viewMode)
 provide('toggleSidebar', toggleSidebar)
 provide('toggleTheme', toggleTheme)
 provide('isDark', isDark)
-
-// 修复15：移除无效的 Swiper onMounted 初始化（模板中无对应容器）
 
 const menuItems = [
   { icon: '📄', label: '新建文档', action: handleCreateNew },
@@ -196,7 +190,6 @@ const menuItems = [
               placeholder="请输入文档标题"
             />
           </div>
-
           <div class="scroll-container part-textarea" ref="editorScrollRef">
             <MarkdownEditor v-model="markdownInput" />
           </div>
@@ -225,7 +218,6 @@ const menuItems = [
   background: var(--bg-surface);
   flex-shrink: 0;
 }
-
 .main-title-input {
   width: 100%;
   font-size: 32px;
@@ -236,12 +228,10 @@ const menuItems = [
   outline: none;
   font-family: 'Inter', sans-serif;
 }
-
 .main-title-input::placeholder {
   color: var(--text-secondary);
   opacity: 0.5;
 }
-
 .main-title-input:focus {
   border-bottom: 2px solid var(--color-accent);
 }

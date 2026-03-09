@@ -1,17 +1,15 @@
 {
   "name": "markforge3d",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "MarkForge 3D — Vue 3 + Three.js Markdown Editor monorepo",
+  "private": true,
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "vite build"
+    "dev": "pnpm --filter frontend dev",
+    "build": "pnpm --filter frontend build",
+    "test": "pnpm --filter markdown-three-parser test"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "packageManager": "pnpm@10.12.4",
-  "devDependencies": {
-  "vite": "^4.0.0"
-}
+  "packageManager": "pnpm@10.12.4"
 }
