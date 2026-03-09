@@ -92,6 +92,14 @@ const loadDoc = doc => {
 
 const handleRename = ({ id, title }) => updateDocTitle(id, title)
 
+// 从知识图谱打开文档，不需要确认弹窗
+const openDocFromGraph = (doc) => {
+  markdownInput.value  = doc.content
+  docTitle.value       = doc.title
+  currentDocId.value   = doc.id
+  showGraph.value      = false
+}
+
 const handleAICreateDoc = ({ title, content } = {}) => {
   if (!content) return
   if (title) docTitle.value = title
@@ -155,7 +163,12 @@ const menuItems = [
 
     <Toolbar :isDark="isDark" @toggleTheme="toggleTheme" />
 
-    <KnowledgeGraph :docs="documents" :isOpen="showGraph" @close="showGraph = false" />
+    <KnowledgeGraph
+      :docs="documents"
+      :isOpen="showGraph"
+      @close="showGraph = false"
+      @open-doc="openDocFromGraph"
+    />
     <AIAssistant @create-doc="handleAICreateDoc" />
 
     <div class="main" :class="{ 'mode-markdown': viewMode === 'markdown', 'mode-preview': viewMode === 'preview' }">
