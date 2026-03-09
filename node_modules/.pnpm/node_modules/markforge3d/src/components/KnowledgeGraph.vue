@@ -328,6 +328,7 @@ onBeforeUnmount(cleanupGraph)
   border-right: 1px solid rgba(255,255,255,0.07);
   display: flex; flex-direction: column;
   padding: 20px 0 16px;
+  overflow: hidden;
 }
 .doc-panel-title {
   font-size: 12px; font-weight: 700; letter-spacing: 1px;
@@ -338,7 +339,7 @@ onBeforeUnmount(cleanupGraph)
   font-size: 11px; color: rgba(255,255,255,0.25);
   padding: 0 16px 10px;
 }
-.doc-list { flex: 1; overflow-y: auto; }
+.doc-list { flex: 1; overflow-y: auto; min-height: 0; padding-bottom: 8px; }
 
 .doc-item {
   display: flex; align-items: center; justify-content: space-between;
@@ -395,4 +396,9 @@ onBeforeUnmount(cleanupGraph)
 }
 .legend-divider { height: 1px; background: rgba(255,255,255,0.07); margin: 8px 0; }
 .legend-help { font-size: 11px; color: rgba(255,255,255,0.4); text-align: center; }
+
+.doc-list::-webkit-scrollbar { width: 4px; }
+.doc-list::-webkit-scrollbar-track { background: transparent; }
+.doc-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+.doc-list::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.28); }
 </style>

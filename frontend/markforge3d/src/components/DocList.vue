@@ -90,16 +90,39 @@ const handleDelete = (doc) => {
 </template>
 
 <style scoped>
-.doc-list { padding: 15px; border-top: 1px solid var(--border-color); }
+.doc-list {
+  padding: 15px;
+  border-top: 1px solid var(--border-color);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
 .list-header h3 {
   font-size: 17px; color: var(--text-secondary);
   text-transform: uppercase; margin-bottom: 10px; letter-spacing: 1px;
+  flex-shrink: 0;
 }
 .empty-state {
   text-align: center; color: var(--text-secondary); font-size: 17px;
   padding: 20px 0; border: 1px dashed var(--border-color); border-radius: var(--radius-sm);
+  flex-shrink: 0;
 }
-.list-content { display: flex; flex-direction: column; gap: 6px; }
+.list-content {
+  display: flex; flex-direction: column; gap: 6px;
+  overflow-y: auto;
+  min-height: 0;
+  padding-right: 4px;
+}
+.list-content::-webkit-scrollbar { width: 4px; }
+.list-content::-webkit-scrollbar-track { background: transparent; }
+.list-content::-webkit-scrollbar-thumb {
+  background: var(--border-color); border-radius: 2px;
+}
+.list-content::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
 
 .doc-item {
   display: flex; align-items: center; justify-content: space-between;
