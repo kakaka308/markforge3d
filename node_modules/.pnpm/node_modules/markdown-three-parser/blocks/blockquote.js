@@ -1,12 +1,9 @@
 // blocks/blockquote.js
-// 修复多级引用：
-// 1. 正确计算 > 的数量（原来用 replace(/\s/g,'') 会把 "> >" 变成 ">>" 计2层，但 ">> " 也计2层，没问题）
-//    真正的 bug 是：parseMarkdown 里 handleHeading 先于 handleBlockquote 执行，
-//    导致 "> ## 标题" 被标题拦截。修复在 parseMarkdown.js 里调换顺序。
-// 2. 空行（仅含 ">"）时保持引用上下文，不 flush。
-import { escapeHTML, protectHTML, restoreHTML } from '../utils/escape.js'
-import { protectCode, restoreCode } from '../utils/code.js'
-import { renderMath } from '../utils/math.js'
+// 修复：内联内容改为复用 parseInline（和 paragraph.js 一致），
+// 解决引用块内内联代码、链接、图片等内容解析错误的问题。
+// 原来自己写的内联处理顺序有误（先 escapeHTML 再 protectCode），
+// 导致反引号内的 < > 被转义后 protectCode 无法正确匹配，内容丢失。
+import { parseInline } from './paragraph.js'
 
 export function createBlockquoteParser() {
   let blockquoteLevel = 0
@@ -35,7 +32,6 @@ export function createBlockquoteParser() {
 
       if (currentLevel > blockquoteLevel) {
         for (let i = blockquoteLevel; i < currentLevel; i++) {
-          // 只在开启新层时注入行号
           html.push(`<blockquote data-line="${lineNo}">`)
         }
       } else if (currentLevel < blockquoteLevel) {
@@ -46,19 +42,10 @@ export function createBlockquoteParser() {
       blockquoteLevel = currentLevel
 
       if (content) {
-        let { text: protectedHtmlText, map: htmlMap } = protectHTML(content)
-        let { text: protectedCodeText, map: codeMap } = protectCode(protectedHtmlText)
-        let processedContent = escapeHTML(protectedCodeText)
-        processedContent = processedContent.replace(
-          /(?<!\$)\$(?!\$)(.+?)(?<!\$)\$(?!\$)/g,
-          (_, expr) => renderMath(expr, false)
-        )
-        processedContent = processedContent.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
-        processedContent = processedContent.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-        processedContent = processedContent.replace(/\*(.+?)\*/g, '<em>$1</em>')
-        processedContent = processedContent.replace(/~~([^~\n]+?)~~/g, '<del>$1</del>')
-        processedContent = restoreCode(processedContent, codeMap)
-        processedContent = restoreHTML(processedContent, htmlMap)
+        // 复用 parseInline，处理顺序和 paragraph.js 完全一致：
+        // protectHTML → protectCode → escapeHTML → 各种内联规则 → restoreCode → restoreHTML
+        const inlineFootnotes = {}
+        const processedContent = parseInline(content, inlineFootnotes)
         html.push(`<p>${processedContent}</p>`)
       }
 

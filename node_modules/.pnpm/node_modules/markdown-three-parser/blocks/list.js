@@ -1,7 +1,10 @@
 // blocks/list.js
-import { escapeHTML, protectHTML, restoreHTML } from '../utils/escape.js'
+// 修复：普通列表项内联内容改为复用 parseInline（和 paragraph.js 一致），
+// 解决列表项内反引号代码、链接、粗体等内容解析错误的问题。
+// 任务列表的 checkbox 文字部分同样使用 parseInline 处理。
+import { parseInline } from './paragraph.js'
+import { protectHTML, restoreHTML } from '../utils/escape.js'
 import { protectCode, restoreCode } from '../utils/code.js'
-import { renderMath } from '../utils/math.js'
 
 export function flushList(html, listStack) {
   while (listStack.length > 0) {
@@ -36,28 +39,24 @@ export function handleListItem(line, html, listStack, lineNo = 0) {
     html.push(`<${currentTag}>`)
   }
 
-  const { text: protectedHtmlText, map: htmlMap } = protectHTML(content)
-  const { text: protectedCodeText, map: codeMap } = protectCode(protectedHtmlText)
-  // 问题1修复：任务列表不加 disabled，改为用 data-line 让前端 JS 处理点击
-  const taskMatch = protectedCodeText.match(/^\[( |x|X)\]\s+(.*)/)
+  // 任务列表需要先检测 [ ] / [x]，在保护代码之前匹配原始文本
+  const taskMatch = content.match(/^\[( |x|X)\]\s+(.*)/)
 
   if (taskMatch) {
     const checked = taskMatch[1].toLowerCase() === 'x'
-    const text = restoreHTML(restoreCode(escapeHTML(taskMatch[2]), codeMap), htmlMap)
-    // 不加 disabled，加 data-line 和 data-task 让 PreviewPane 拦截点击更新 markdown
+    // 任务文字部分也用 parseInline 处理，支持内联代码、粗体等
+    const inlineFootnotes = {}
+    const text = parseInline(taskMatch[2], inlineFootnotes)
     html.push(
       `<li data-line="${lineNo}" data-task="true">` +
       `<input type="checkbox" ${checked ? 'checked' : ''} data-line="${lineNo}"> ${text}</li>`
     )
   } else {
-    let processedContent = escapeHTML(protectedCodeText)
-    processedContent = processedContent.replace(
-      /(?<!\$)\$(?!\$)(.+?)(?<!\$)\$(?!\$)/g,
-      (_, expr) => renderMath(expr, false)
-    )
-    processedContent = restoreCode(processedContent, codeMap)
-    processedContent = restoreHTML(processedContent, htmlMap)
+    // 普通列表项：复用 parseInline，处理顺序与 paragraph.js 完全一致
+    const inlineFootnotes = {}
+    const processedContent = parseInline(content, inlineFootnotes)
     html.push(`<li data-line="${lineNo}">${processedContent}</li>`)
   }
+
   return true
 }
