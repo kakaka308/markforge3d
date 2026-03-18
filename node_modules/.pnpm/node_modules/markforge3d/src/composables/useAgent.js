@@ -87,14 +87,14 @@ export function useAgent() {
     agentLog.value.push({ type, message, time: Date.now() })
   }
 
-  // ── 执行单个 tool_call ──────────────────────────────────────
+  // ── 执行具体的工具 ─────────────────────────────────────────────
   const executeTool = (toolName, args, ctx) => {
     const { targetMode, markdownInput, insertMarkdown, docTitle, emit } = ctx
 
     if (toolName === 'insert_at_cursor') {
       const c = args.content || ''
       insertMarkdown(c, c.length)
-      log('action', `📝 在光标处插入了 ${c.split('\n').length} 行`)
+      log('action', `在光标处插入了 ${c.split('\n').length} 行`)
       return
     }
 
@@ -103,7 +103,7 @@ export function useAgent() {
       markdownInput.value = markdownInput.value
         ? markdownInput.value + '\n\n' + c
         : c
-      log('action', `📄 追加了 ${c.split('\n').length} 行到文档末尾`)
+      log('action', `追加了 ${c.split('\n').length} 行到文档末尾`)
       return
     }
 
@@ -113,9 +113,9 @@ export function useAgent() {
       if (lineNo >= 0 && lineNo < lines.length) {
         lines[lineNo] = args.new_content || ''
         markdownInput.value = lines.join('\n')
-        log('action', `✏️ 已修改第 ${lineNo + 1} 行`)
+        log('action', `已修改第 ${lineNo + 1} 行`)
       } else {
-        log('error', `❌ 行号 ${lineNo} 超出范围（共 ${lines.length} 行）`)
+        log('error', `行号 ${lineNo} 超出范围（共 ${lines.length} 行）`)
       }
       return
     }
@@ -128,15 +128,15 @@ export function useAgent() {
       if (targetMode === 'overwrite') {
         if (docTitle) docTitle.value = title
         markdownInput.value = fullDoc
-        log('action', `🔄 已覆盖当前文档「${title}」`)
+        log('action', `已覆盖当前文档「${title}」`)
       } else if (targetMode === 'new') {
         emit('create-doc', { title, content: fullDoc })
-        log('action', `📄 已新建文档「${title}」`)
+        log('action', `已新建文档「${title}」`)
       }
       return
     }
 
-    log('error', `❌ 未知操作: ${toolName}`)
+    log('error', `未知操作: ${toolName}`)
   }
 
   // ── 主入口 ─────────────────────────────────────────────────

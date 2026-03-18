@@ -1,10 +1,4 @@
 // src/composables/useAI.js
-// 修复2：API Key 改为从环境变量读取，不再硬编码在源码中。
-//        请在项目根目录创建 .env.local 文件并写入：
-//        VITE_AI_API_KEY=你的真实Key
-//        VITE_AI_API_URL=https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions
-//        VITE_AI_MODEL_NAME=qwen-turbo
-// 修复13：新增 clearMessages 方法，避免长对话耗尽 token 上限。
 import { ref } from 'vue'
 
 export function useAI() {
@@ -17,29 +11,29 @@ export function useAI() {
     if (!userText.trim()) return
 
     messages.value.push({ role: 'user', content: userText })
+
+    // 先推一条空的 assistant 消息，后面往里追加内容
+    messages.value.push({ role: 'assistant', content: '' })
+    const assistantIndex = messages.value.length - 1
+
     isLoading.value = true
 
-    // 从环境变量读取配置，避免 Key 泄露到源码
     const API_KEY = import.meta.env.VITE_AI_API_KEY || ''
-    const API_URL =
-      import.meta.env.VITE_AI_API_URL ||
-      'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions'
+    const API_URL = import.meta.env.VITE_AI_API_URL
+      || 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions'
     const MODEL_NAME = import.meta.env.VITE_AI_MODEL_NAME || 'qwen-turbo'
 
     if (!API_KEY) {
-      messages.value.push({
-        role: 'assistant',
-        content: '❌ 未配置 API Key。请在项目根目录创建 .env.local 文件并设置 VITE_AI_API_KEY。'
-      })
+      messages.value[assistantIndex].content =
+        '❌ 未配置 API Key。请在 .env.local 中设置 VITE_AI_API_KEY。'
       isLoading.value = false
       return
     }
 
     try {
-      const requestMessages = messages.value.map(msg => ({
-        role: msg.role,
-        content: msg.content
-      }))
+      const requestMessages = messages.value
+        .slice(0, -1) // 去掉刚推的空 assistant 消息，不发给 API
+        .map(msg => ({ role: msg.role, content: msg.content }))
 
       const response = await fetch(API_URL, {
         method: 'POST',
@@ -51,38 +45,64 @@ export function useAI() {
           model: MODEL_NAME,
           messages: requestMessages,
           temperature: 0.7,
-          stream: false
+          stream: true  // 开启流式
         })
       })
 
-      const data = await response.json()
-
       if (!response.ok) {
-        const errorMsg = data.error?.message || `HTTP Error ${response.status}`
-        throw new Error(errorMsg)
+        const err = await response.json()
+        throw new Error(err.error?.message || `HTTP ${response.status}`)
       }
 
-      const aiReply = data.choices?.[0]?.message?.content || '未收到回复内容'
-      messages.value.push({ role: 'assistant', content: aiReply })
+      // 用 ReadableStream 逐块读取
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+
+        // 按换行切割成 SSE 事件
+        const lines = buffer.split('\n')
+        buffer = lines.pop() // 最后一行可能不完整，留着等下次拼
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue
+          const data = line.slice(6).trim()
+          if (data === '[DONE]') break
+
+          try {
+            const chunk = JSON.parse(data)
+            const delta = chunk.choices?.[0]?.delta?.content
+            if (delta) {
+              // 直接往那条 assistant 消息追加内容，Vue 响应式自动更新 UI
+              messages.value[assistantIndex].content += delta
+            }
+          } catch {
+            // 解析单个 chunk 失败就跳过，不影响整体
+            continue
+          }
+        }
+      }
+
     } catch (error) {
       console.error('AI Request Failed:', error)
-      messages.value.push({
-        role: 'assistant',
-        content: `❌ 请求失败: ${error.message}。请检查 API Key 和网络设置。`
-      })
+      messages.value[assistantIndex].content =
+        `❌ 请求失败: ${error.message}。请检查 API Key 和网络设置。`
     } finally {
       isLoading.value = false
     }
   }
 
-  // 修复13：提供清空对话的方法，防止长对话超出 token 限制
   const clearMessages = () => {
     messages.value = [
       { role: 'assistant', content: '对话已清空。有什么可以帮你？' }
     ]
   }
 
-  // 将对话转换为 Markdown 文档
   const convertToMarkdown = () => {
     return messages.value
       .map(m => {
