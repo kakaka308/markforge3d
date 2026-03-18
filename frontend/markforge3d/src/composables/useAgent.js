@@ -140,37 +140,41 @@ export function useAgent() {
   }
 
   // ── 主入口 ─────────────────────────────────────────────────
-  // targetMode: 'insert' | 'overwrite' | 'new'
-  // ctx: { markdownInput, insertMarkdown, docTitle, emit }
   const runAgent = async (userInstruction, targetMode, ctx) => {
-    if (isRunning.value) return
-    isRunning.value = true
-    agentLog.value = []
+  if (isRunning.value) return
+  isRunning.value = true
+  agentLog.value = []
 
-    if (!API_KEY) {
-      log('error', '❌ 未配置 API Key，请在 .env.local 中设置 VITE_AI_API_KEY')
-      isRunning.value = false
-      return
-    }
+  if (!API_KEY) {
+    log('error', '❌ 未配置 API Key，请在 .env.local 中设置 VITE_AI_API_KEY')
+    isRunning.value = false
+    return
+  }
 
-    const modeLabel = { insert: '插入当前文档', overwrite: '覆盖当前文档', new: '新建文档' }[targetMode] || targetMode
-    log('thinking', `🤔 指令：「${userInstruction}」`)
-    log('thinking', `📌 目标：${modeLabel}`)
+  const modeLabel = {
+    insert: '插入当前文档',
+    overwrite: '覆盖当前文档',
+    new: '新建文档'
+  }[targetMode] || targetMode
 
-    try {
-      const currentDoc = ctx.markdownInput.value
-      const tools = targetMode === 'insert' ? TOOLS_INSERT : TOOLS_WRITE
+  log('thinking', `🤔 指令：「${userInstruction}」`)
+  log('thinking', `📌 目标：${modeLabel}`)
 
-      const contextBlock = {
-        insert:
-          `当前文档内容（你将在其中插入内容）：\n\`\`\`markdown\n${currentDoc || '（文档为空）'}\n\`\`\``,
-        overwrite:
-          `当前文档内容（你将完全重写它）：\n\`\`\`markdown\n${currentDoc || '（文档为空）'}\n\`\`\``,
-        new:
-          '你将为用户创建一份全新文档，与当前编辑器内容无关。'
-      }[targetMode]
+  // 推一条"AI 正在生成..."的日志条目，后面往里追加内容
+  agentLog.value.push({ type: 'thinking', message: '💭 AI 正在思考：', time: Date.now() })
+  const streamingIndex = agentLog.value.length - 1
 
-      const systemPrompt = `你是一个 Markdown 文档编辑 Agent，通过调用工具操作编辑器。
+  try {
+    const currentDoc = ctx.markdownInput.value
+    const tools = targetMode === 'insert' ? TOOLS_INSERT : TOOLS_WRITE
+
+    const contextBlock = {
+      insert: `当前文档内容（你将在其中插入内容）：\n\`\`\`markdown\n${currentDoc || '（文档为空）'}\n\`\`\``,
+      overwrite: `当前文档内容（你将完全重写它）：\n\`\`\`markdown\n${currentDoc || '（文档为空）'}\n\`\`\``,
+      new: '你将为用户创建一份全新文档，与当前编辑器内容无关。'
+    }[targetMode]
+
+    const systemPrompt = `你是一个 Markdown 文档编辑 Agent，通过调用工具操作编辑器。
 
 ${contextBlock}
 
@@ -179,60 +183,122 @@ ${contextBlock}
 2. 生成标准 Markdown 格式
 3. write_document 的 title 为纯文字（不含 #），content 为正文`
 
-      const resp = await fetch(API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${API_KEY}`
-        },
-        body: JSON.stringify({
-          model: MODEL,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user',   content: userInstruction }
-          ],
-          tools,
-          tool_choice: 'required',
-          temperature: 0.4
-        })
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${API_KEY}`
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userInstruction }
+        ],
+        tools,
+        tool_choice: 'required',
+        temperature: 0.4,
+        stream: true  // 开启流式
       })
+    })
 
-      if (!resp.ok) {
-        const err = await resp.json()
-        throw new Error(err.error?.message || `HTTP ${resp.status}`)
+    if (!response.ok) {
+      const err = await response.json()
+      throw new Error(err.error?.message || `HTTP ${response.status}`)
+    }
+
+    // ── 流式读取，同时拼接 tool_calls ──────────────────────
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+
+    // 用于累积每个 tool_call 的完整参数
+    // 结构：{ 0: { name: 'write_document', arguments: '{"title":...' }, ... }
+    const toolCallBuffers = {}
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop()
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue
+        const data = line.slice(6).trim()
+        if (data === '[DONE]') break
+
+        try {
+          const chunk = JSON.parse(data)
+          const delta = chunk.choices?.[0]?.delta
+
+          // 普通文字（tool_choice: required 时一般没有，保底处理）
+          if (delta?.content) {
+            agentLog.value[streamingIndex].message += delta.content
+          }
+
+          // 工具调用分块到来，累积拼接
+          if (delta?.tool_calls) {
+            for (const tc of delta.tool_calls) {
+              const idx = tc.index ?? 0
+              if (!toolCallBuffers[idx]) {
+                toolCallBuffers[idx] = { name: '', arguments: '' }
+              }
+              if (tc.function?.name) {
+                toolCallBuffers[idx].name += tc.function.name
+              }
+              if (tc.function?.arguments) {
+                toolCallBuffers[idx].arguments += tc.function.arguments
+
+                // 实时显示正在生成的内容（让用户看到进度）
+                agentLog.value[streamingIndex].message =
+                  `💭 AI 正在生成内容... (${toolCallBuffers[idx].arguments.length} 字符)`
+              }
+            }
+          }
+        } catch {
+          continue
+        }
       }
+    }
 
-      const data    = await resp.json()
-      const message = data.choices?.[0]?.message
+    // ── 流结束，执行拼完整的工具调用 ───────────────────────
+    const completedCalls = Object.values(toolCallBuffers)
 
-      if (message?.tool_calls?.length > 0) {
-        log('thinking', `🔧 AI 计划执行 ${message.tool_calls.length} 个操作`)
+    if (completedCalls.length > 0) {
+      // 把"正在思考"的条目改成完成状态
+      agentLog.value[streamingIndex].message = '✨ 内容生成完毕，开始执行操作...'
 
-        for (const call of message.tool_calls) {
-          let args = {}
-          try { args = JSON.parse(call.function.arguments || '{}') }
-          catch { log('error', '❌ 参数解析失败'); continue }
+      log('thinking', `🔧 AI 计划执行 ${completedCalls.length} 个操作`)
 
-          await new Promise(r => setTimeout(r, 350))
-          executeTool(call.function.name, args, { ...ctx, targetMode })
+      for (const call of completedCalls) {
+        let args = {}
+        try {
+          args = JSON.parse(call.arguments || '{}')
+        } catch {
+          log('error', '❌ 参数解析失败')
+          continue
         }
 
-        log('done', '✅ 操作完成')
-
-      } else if (message?.content) {
-        // tool_choice: required 理论上不会走这里，保底处理
-        log('done', `💬 ${message.content}`)
-      } else {
-        log('error', '❌ AI 返回了空响应')
+        await new Promise(r => setTimeout(r, 350))
+        executeTool(call.name, args, { ...ctx, targetMode })
       }
 
-    } catch (err) {
-      log('error', `❌ 请求失败: ${err.message}`)
-      console.error('[Agent Error]', err)
-    } finally {
-      isRunning.value = false
+      log('done', '✅ 操作完成')
+
+    } else {
+      agentLog.value[streamingIndex].message = '💬 AI 没有调用任何工具'
+      log('done', '完成')
     }
+
+  } catch (err) {
+    log('error', `❌ 请求失败: ${err.message}`)
+    console.error('[Agent Error]', err)
+  } finally {
+    isRunning.value = false
   }
+}
 
   return { runAgent, isRunning, agentLog }
 }
