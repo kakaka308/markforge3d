@@ -1,6 +1,6 @@
 <script setup>
 import { ref, provide, watch } from 'vue'
-import { watchDebounced } from '@vueuse/core'
+// import { watchDebounced } from '@vueuse/core'
 import { ElMessage } from 'element-plus'
 
 import MarkdownEditor from './components/MarkdownEditor.vue'
@@ -30,12 +30,47 @@ watch(markdownInput, val => localStorage.setItem('draft', val))
 // 修复：computed 改为 watchDebounced，用户停止输入 200ms 后才重新解析。
 // 避免每次按键都触发全量解析，长文档时明显减少卡顿。
 // immediate:true 保证初始渲染正常。
-const renderedHtml = ref(parseMarkdown(markdownInput.value) || '')
-watchDebounced(
-  markdownInput,
-  val => { renderedHtml.value = parseMarkdown(val) || '' },
-  { debounce: 200, immediate: false }
-)
+// const renderedHtml = ref(parseMarkdown(markdownInput.value) || '')
+// watchDebounced(
+//   markdownInput,
+//   val => { renderedHtml.value = parseMarkdown(val) || '' },
+//   { debounce: 200, immediate: false }
+// )
+
+
+import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
+const parsedHtml  = ref('')
+let parseWorker  = null
+let parseSeq     = 0
+onMounted(() => {
+  // 创建 Worker
+  parseWorker = new Worker(
+    new URL('../../packages/markdown-three-parser/parseWorker.js', import.meta.url),
+    { type: 'module' }
+  )
+
+  // 收到解析结果
+  parseWorker.onmessage = ({ data: { seq, html } }) => {
+    // 只用最新一次的结果，丢弃过期的
+    if (seq === parseSeq) {
+      parsedHtml.value = html
+    }
+  }
+
+  // 初始解析
+  parseSeq++
+  parseWorker.postMessage({ seq: parseSeq, text: markdownInput.value })
+})
+
+onBeforeUnmount(() => {
+  parseWorker?.terminate()  // 组件卸载时关闭 Worker
+})
+
+// 每次输入都发给 Worker，不需要 debounce 了
+watch(markdownInput, (val) => {
+  parseSeq++
+  parseWorker.postMessage({ seq: parseSeq, text: val })
+})
 
 const { historyList, addHistory, rollback } = useHistory(markdownInput, docTitle)
 const { exportPdf }  = usePdfExport()
