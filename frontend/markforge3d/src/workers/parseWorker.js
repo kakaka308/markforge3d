@@ -1,4 +1,4 @@
-import { parseMarkdown } from './index.js'
+import { parseMarkdown } from 'markdown-three-parser'
 
 self.onmessage = ({ data: { seq, text } }) => {
   const html = parseMarkdown(text)

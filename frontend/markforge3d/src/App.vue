@@ -1,5 +1,5 @@
 <script setup>
-import { ref, provide, watch } from 'vue'
+import { ref, provide, watch,onMounted, onBeforeUnmount } from 'vue'
 // import { watchDebounced } from '@vueuse/core'
 import { ElMessage } from 'element-plus'
 
@@ -19,7 +19,6 @@ import { useShortcuts } from './composables/useShortcuts'
 import { useTheme } from './composables/useTheme'
 import { useDocuments } from './composables/useDocuments'
 import { useScrollSync } from './composables/useScrollSync'
-import { parseMarkdown } from 'markdown-three-parser'
 
 const markdownInput = ref(localStorage.getItem('draft') || '')
 const docTitle      = ref(localStorage.getItem('draft_title') || '未命名文档')
@@ -38,16 +37,15 @@ watch(markdownInput, val => localStorage.setItem('draft', val))
 // )
 
 
-import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
 const parsedHtml  = ref('')
 let parseWorker  = null
 let parseSeq     = 0
 onMounted(() => {
   // 创建 Worker
-  parseWorker = new Worker(
-    new URL('../../packages/markdown-three-parser/parseWorker.js', import.meta.url),
-    { type: 'module' }
-  )
+ parseWorker = new Worker(
+  new URL('./workers/parseWorker.js', import.meta.url),
+  { type: 'module' }
+)
 
   // 收到解析结果
   parseWorker.onmessage = ({ data: { seq, html } }) => {
@@ -254,7 +252,7 @@ const menuItems = [
         <div class="card">
           <div class="part-title">HTML 预览</div>
           <div class="scroll-container part-preview preview" ref="previewScrollRef">
-            <PreviewPane :renderedHtml="renderedHtml" @task-toggle="handleTaskToggle" />
+            <PreviewPane :renderedHtml="parsedHtml" @task-toggle="handleTaskToggle" />
           </div>
         </div>
       </div>
