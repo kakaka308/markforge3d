@@ -2,7 +2,13 @@
 import { ref, nextTick, inject, watch, computed } from 'vue'
 import { useAI } from '../composables/useAI'
 import { useAgent } from '../composables/useAgent'
-
+import { 
+  Edit, Refresh, DocumentAdd, 
+  List, Grid, Monitor, Check, 
+  MagicStick, Rank, Switch, 
+  Notebook, Files, Ticket,
+  ChatLineRound, DeleteFilled, User
+} from '@element-plus/icons-vue'
 const emit = defineEmits(['create-doc'])
 
 // ── 面板开关 & Tab ───────────────────────────────────────────
@@ -16,9 +22,9 @@ const mode   = ref('agent')   // 'agent' | 'chat'
 const targetMode = ref('insert')
 
 const targetOptions = [
-  { value: 'insert',    icon: '✏️', label: '插入当前文档' },
-  { value: 'overwrite', icon: '🔄', label: '覆盖当前文档' },
-  { value: 'new',       icon: '📄', label: '新建文档'     }
+  { value: 'insert',    icon: Edit, label: '插入当前文档' },
+  { value: 'overwrite', icon: Refresh, label: '覆盖当前文档' },
+  { value: 'new',       icon: DocumentAdd, label: '新建文档'     }
 ]
 
 // ── 注入（App.vue 必须 provide 这三个）──────────────────────
@@ -30,7 +36,7 @@ const docTitle       = inject('docTitle')
 const chatBox  = ref(null)
 const inputVal = ref('')
 const { messages, isLoading, sendMessage, clearMessages, convertToMarkdown } = useAI()
-
+// 键盘事件
 const send = async () => {
   if (!inputVal.value.trim() || isLoading.value) return
   const text = inputVal.value
@@ -80,22 +86,22 @@ const runAgentCmd = async () => {
 const quickCommands = computed(() => {
   if (targetMode.value === 'insert') {
     return [
-      { label: '📋 生成大纲', cmd: '根据当前文档内容生成详细大纲（含二三级标题），追加到末尾' },
-      { label: '📊 添加表格', cmd: '根据文档内容生成一个总结性对比表格，追加到末尾' },
-      { label: '💡 添加代码示例', cmd: '为文档中的技术概念补充代码示例，追加到末尾' },
-      { label: '✅ 添加总结', cmd: '根据文档内容生成总结段落，追加到末尾' }
+      { label: '生成大纲', cmd: '根据当前文档内容生成详细大纲（含二三级标题），追加到末尾', icon: List },
+      { label: '添加表格', cmd: '根据文档内容生成一个总结性对比表格，追加到末尾', icon: Grid },
+      { label: '添加代码示例', cmd: '为文档中的技术概念补充代码示例，追加到末尾', icon: Monitor  },
+      { label: '添加总结', cmd: '根据文档内容生成总结段落，追加到末尾', icon: Check }
     ]
   } else if (targetMode.value === 'overwrite') {
     return [
-      { label: '✨ 润色全文', cmd: '润色当前文档，保持原意，让语言更流畅专业，重写整篇' },
-      { label: '📐 重构结构', cmd: '重新组织文档结构，改善标题层级和段落逻辑，重写整篇' },
-      { label: '🌐 翻译为英文', cmd: '将当前文档翻译为英文，保持 Markdown 格式不变' }
+      { label: '润色全文', cmd: '润色当前文档，保持原意，让语言更流畅专业，重写整篇', icon: MagicStick },
+      { label: '重构结构', cmd: '重新组织文档结构，改善标题层级和段落逻辑，重写整篇', icon: Rank },
+      { label: '翻译为英文', cmd: '将当前文档翻译为英文，保持 Markdown 格式不变', icon: Switch  }
     ]
   } else {
     return [
-      { label: '📝 Vue3 入门', cmd: '写一篇 Vue3 Composition API 入门教程，包含代码示例' },
-      { label: '📝 技术方案', cmd: '写一份前端技术方案文档模板，含背景、方案对比、结论' },
-      { label: '📝 周报模板', cmd: '生成一份本周技术工作周报，含本周完成、下周计划、风险' }
+      { label: 'Vue3 入门', cmd: '写一篇 Vue3 Composition API 入门教程，包含代码示例', icon: Notebook },
+      { label: '技术方案', cmd: '写一份前端技术方案文档模板，含背景、方案对比、结论', icon: Files },
+      { label: '周报模板', cmd: '生成一份本周技术工作周报，含本周完成、下周计划、风险', icon: Ticket }
     ]
   }
 })
@@ -136,15 +142,17 @@ watch(isOpen, (val) => {
         <div class="panel-header">
           <div class="tabs">
             <button class="tab-btn" :class="{ active: mode === 'agent' }" @click="mode = 'agent'">
-              🤖 Agent
+              <component :is="List" style="width: 0.9em; height: 0.9em; margin-right: 4px;" />
+              Agent
             </button>
             <button class="tab-btn" :class="{ active: mode === 'chat' }" @click="mode = 'chat'">
-              💬 对话
+              <component :is="ChatLineRound" style="width: 0.9em; height: 0.9em; margin-right: 4px;" />
+              对话
             </button>
           </div>
 
           <!-- 目标模式（两个 tab 共用） -->
-          <div class="target-selector">
+           <div class="target-selector">
             <button
               v-for="opt in targetOptions"
               :key="opt.value"
@@ -153,7 +161,8 @@ watch(isOpen, (val) => {
               @click="targetMode = opt.value"
               :title="opt.label"
             >
-              {{ opt.icon }} {{ opt.label }}
+              <component :is="opt.icon" style="width: 1em; height: 1em; vertical-align: middle; margin-right: 4px;" />
+              {{ opt.label }}
             </button>
           </div>
         </div>
@@ -167,21 +176,26 @@ watch(isOpen, (val) => {
             @click="agentInput = q.cmd; mode = 'agent'"
             :disabled="isRunning"
           >
+          <component :is="q.icon" style="width: 1em; height: 1em; margin-right: 4px; vertical-align: middle;" />
             {{ q.label }}
           </button>
         </div>
 
         <!-- ══ Agent 模式 ══ -->
         <template v-if="mode === 'agent'">
+
           <div class="agent-log" ref="agentLogBox">
+            <!-- 空状态 -->
             <div v-if="agentLog.length === 0" class="empty-state">
-              <div class="empty-icon">🤖</div>
+              <div class="empty-icon">
+                <component :is="Monitor" style="width: 2em; height: 2em;" />
+              </div>
               <div>输入指令，让 AI 直接操作你的文档</div>
               <div class="empty-sub">
                 当前：{{ targetOptions.find(o => o.value === targetMode)?.label }}
               </div>
             </div>
-
+            <!-- 日志列表 -->
             <div
               v-for="(entry, i) in agentLog"
               :key="i"
@@ -190,12 +204,12 @@ watch(isOpen, (val) => {
             >
               {{ entry.message }}
             </div>
-
+            <!-- 思考中 -->
             <div v-if="isRunning" class="log-entry thinking">
               <span class="dot">·</span><span class="dot">·</span><span class="dot">·</span>
             </div>
           </div>
-
+          <!-- 输入框 -->
           <div class="input-area">
             <div class="ai-input">
               <input
@@ -214,33 +228,42 @@ watch(isOpen, (val) => {
         <!-- ══ 普通对话模式 ══ -->
         <template v-else>
           <div class="chat-list" ref="chatBox">
+            <!-- 空状态 -->
             <div v-if="messages.length === 0" class="empty-state">
-              <div class="empty-icon">💬</div>
+              <div class="empty-icon">
+                <component :is="ChatLineRound" style="width: 2em; height: 2em;" />
+              </div>
               <div>有什么可以帮你？</div>
             </div>
-
+            <!-- 消息列表 -->
             <div
               v-for="(msg, i) in messages"
               :key="i"
               class="message-row"
               :class="msg.role"
             >
-              <div class="avatar">{{ msg.role === 'user' ? '👤' : '🤖' }}</div>
+              <div class="avatar">
+                <component :is="msg.role === 'user' ? User : Monitor" style="width: 1.2em; height: 1.2em;" />
+              </div>
               <div class="bubble">{{ msg.content }}</div>
             </div>
-
+            <!-- 思考中 -->
             <div v-if="isLoading" class="message-row assistant">
-              <div class="avatar">🤖</div>
+              <div class="avatar">
+                <component :is="ChatLineRound" style="width: 1.5em; height: 1.5em;" />
+              </div>
               <div class="bubble">
                 <span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>
               </div>
             </div>
           </div>
-
+          <!-- 输入框 -->
           <div class="input-area">
             <div class="chat-actions">
               <button class="action-btn" @click="clearMessages" title="清空对话">
-                🗑️ 清空
+                <component :is="DeleteFilled" style="width: 0.9em; height: 0.9em; margin-right: 4px;" />
+                
+                清空
               </button>
               <button
                 class="apply-btn"
@@ -248,7 +271,7 @@ watch(isOpen, (val) => {
                 :disabled="messages.length <= 1"
                 :title="`将对话写入（${targetOptions.find(o => o.value === targetMode)?.label}）`"
               >
-                {{ targetOptions.find(o => o.value === targetMode)?.icon }}
+                <component :is="targetOptions.find(o => o.value === targetMode)?.icon" style="width: 0.9em; height: 0.9em; margin-right: 4px;" />
                 写入（{{ targetOptions.find(o => o.value === targetMode)?.label }}）
               </button>
             </div>
