@@ -1,6 +1,3 @@
-// src/composables/useScrollSync.js
-// 修复：接收第三个参数 markdownInput，内容变化后 nextTick 重新把预览
-// 滚动到和编辑器当前行对齐，解决内容更新后预览位置错位的问题。
 import { onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 
 export function useScrollSync(editorScrollRef, previewScrollRef, markdownInput) {

@@ -1,5 +1,10 @@
 <script setup>
 import { inject } from 'vue'
+import {
+  Link, Picture, Grid, Minus,
+  Box, CircleCheck, Moon, Sunny,
+  Menu, List, Check
+} from '@element-plus/icons-vue'
 
 const insertMarkdown = inject('insertMarkdown')
 const toggleMarkdownMode = inject('toggleMarkdownMode')
@@ -8,6 +13,7 @@ const viewMode = inject('viewMode')
 const toggleSidebar = inject('toggleSidebar')
 const toggleTheme = inject('toggleTheme')
 const isDark = inject('isDark')
+
 </script>
 
 <template>
@@ -44,18 +50,32 @@ const isDark = inject('isDark')
     <div class="divider"></div>
 
     <div class="toolbar-group">
-      <button class="icon-btn" @click="insertMarkdown('[链接描述](http://)', 1, 4)" title="链接">🔗</button>
-      <button class="icon-btn" @click="insertMarkdown('![图片描述](http://)', 2, 4)" title="图片">🖼️</button>
-      <button class="icon-btn" @click="insertMarkdown('\n```\n代码块\n```\n', 4, 3)" title="代码块">&lt;/&gt;</button>
-      <button class="icon-btn" @click="insertMarkdown('\n| 表头1 | 表头2 |\n| --- | --- |\n| 内容1 | 内容2 |\n', 0)" title="表格">📊</button>
-      <button class="icon-btn" @click="insertMarkdown('\n---\n', 0)" title="分割线">―</button>
+      <button class="icon-btn" @click="insertMarkdown('[链接描述](http://)', 1, 4)" title="链接">
+         <el-icon :size="16"><Link /></el-icon>
+      </button>
+      <button class="icon-btn" @click="insertMarkdown('![图片描述](http://)', 2, 4)" title="图片">
+        <el-icon :size="16"><Picture /></el-icon>
+      </button>
+      <button class="icon-btn" @click="insertMarkdown('\n```\n代码块\n```\n', 4, 3)" title="代码块">
+        &lt;/&gt;
+      </button>
+      <button class="icon-btn" @click="insertMarkdown('\n| 表头1 | 表头2 |\n| --- | --- |\n| 内容1 | 内容2 |\n', 0)" title="表格">
+        <el-icon :size="16"><Grid /></el-icon>
+      </button>
+      <button class="icon-btn" @click="insertMarkdown('\n---\n', 0)" title="分割线">
+        <el-icon :size="16"><Minus /></el-icon>
+      </button>
     </div>
 
     <div class="divider"></div>
 
     <div class="toolbar-group">
-      <button class="icon-btn" @click="insertMarkdown(':::three\n### cube (0x64b5f6, 1)\n:::', 0)" title="插入立方体">🧊</button>
-      <button class="icon-btn" @click="insertMarkdown(':::three\n### sphere (red, 1)\n:::', 0)" title="插入球体">⚪</button>
+      <button class="icon-btn" @click="insertMarkdown(':::three\n### cube (0x64b5f6, 1)\n:::', 0)" title="插入立方体">
+        <el-icon :size="16"><Box /></el-icon>
+      </button>
+      <button class="icon-btn" @click="insertMarkdown(':::three\n### sphere (red, 1)\n:::', 0)" title="插入球体">
+        <el-icon :size="16"><CircleCheck /></el-icon>
+      </button>
     </div>
 
     <div class="divider"></div>
@@ -64,7 +84,9 @@ const isDark = inject('isDark')
       <button class="icon-btn text-btn" :class="{ active: viewMode === 'markdown' }" @click="toggleMarkdownMode" title="仅编辑">编辑</button>
       <button class="icon-btn text-btn" :class="{ active: viewMode === 'preview' }" @click="togglePreviewMode" title="仅预览">预览</button>
       <button class="icon-btn theme-btn" @click="toggleTheme" title="切换主题">
-        {{ isDark ? '🌙' : '🌞' }}
+         <el-icon :size="18">
+          <component :is="isDark ? Moon : Sunny" />
+        </el-icon>
       </button>
     </div>
   </div>

@@ -1,4 +1,5 @@
 <script setup>
+import { Reading } from '@element-plus/icons-vue'
 const props = defineProps({
   type: { type: String, default: 'tutorial' },
   open: { type: Boolean, default: false }
@@ -9,7 +10,7 @@ const emit = defineEmits(['close'])
 <template>
   <div class="info-panel" :class="{ open: open }">
     <div class="info-header">
-      <h3 v-if="type === 'tutorial'">📖 使用教程</h3>
+      <h3 v-if="type === 'tutorial'"><el-icon><Reading /></el-icon>使用教程</h3>
       <h3 v-else-if="type === 'shortcuts'">⌨ 常用快捷键</h3>
       <button class="close-btn" @click="emit('close')" title="关闭">✖</button>
     </div>

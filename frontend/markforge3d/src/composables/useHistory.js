@@ -1,5 +1,4 @@
 // src/composables/useHistory.js
-// 修复：历史记录同时保存 title，回滚时一并恢复，避免回滚后标题停留在当前值。
 import { ref } from 'vue'
 import { watchDebounced } from '@vueuse/core'
 

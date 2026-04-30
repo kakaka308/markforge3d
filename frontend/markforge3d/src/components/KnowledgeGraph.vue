@@ -3,6 +3,7 @@ import { onBeforeUnmount, ref, watch } from 'vue'
 import ThreeForceGraph from 'three-forcegraph'
 import SpriteText from 'three-spritetext'
 import * as THREE from 'three'
+import { Folder } from '@element-plus/icons-vue'
 
 const props = defineProps({
   docs:   Array,
@@ -262,7 +263,7 @@ onBeforeUnmount(cleanupGraph)
 
     <!-- 文档列表侧栏 -->
     <div class="doc-panel">
-      <div class="doc-panel-title">📂 文档列表</div>
+      <div class="doc-panel-title"><el-icon><Folder /></el-icon> 文档列表</div>
       <div class="doc-panel-tip">点击文档名聚焦节点</div>
 
       <div class="doc-list">

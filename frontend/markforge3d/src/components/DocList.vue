@@ -1,6 +1,7 @@
 <script setup>
-// 修复14：删除文档前添加 confirm() 确认，防止用户误操作丢失数据。
 import { ref, nextTick } from 'vue'
+import { Folder } from '@element-plus/icons-vue'
+
 
 defineProps({
   docs: Array,
@@ -11,25 +12,23 @@ const emit = defineEmits(['load', 'delete', 'rename'])
 const editingId = ref(null)
 const editTitle = ref('')
 const editInputRef = ref(null)
-
+// 重命名
 const startRename = doc => {
   editingId.value = doc.id
   editTitle.value = doc.title
   nextTick(() => editInputRef.value?.[0]?.focus())
 }
-
 const finishRename = doc => {
   if (editingId.value === doc.id) {
     emit('rename', { id: doc.id, title: editTitle.value })
     editingId.value = null
   }
 }
-
 const cancelRename = () => {
   editingId.value = null
 }
 
-// 修复14：删除前确认
+//  删除前确认
 const handleDelete = (doc) => {
   if (confirm(`确定要删除文档「${doc.title || '未命名文档'}」吗？此操作不可撤销。`)) {
     emit('delete', doc.id)
@@ -40,7 +39,7 @@ const handleDelete = (doc) => {
 <template>
   <div class="doc-list">
     <div class="list-header">
-      <h3>📂 我的文档</h3>
+      <h3><el-icon><Folder /></el-icon> 我的文档</h3>
     </div>
 
     <div v-if="docs.length === 0" class="empty-state">
@@ -77,7 +76,6 @@ const handleDelete = (doc) => {
             @click.stop="startRename(doc)"
             title="重命名"
           >✎</button>
-          <!-- 修复14：绑定带确认的 handleDelete -->
           <button
             class="action-btn delete-btn"
             @click.stop="handleDelete(doc)"

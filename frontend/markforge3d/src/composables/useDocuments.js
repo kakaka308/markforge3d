@@ -90,6 +90,9 @@ export function useDocuments(currentContent, currentTitle) {
     { debounce: 2000 }
   )
 
+  /**
+ * 创建一个全新的空白文档并重置编辑器状态
+ */
   const createNewDoc = () => {
     currentDocId.value = null
     localStorage.removeItem('draft')

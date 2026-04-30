@@ -1,4 +1,6 @@
 <script setup>
+import { Clock } from '@element-plus/icons-vue'
+
 defineProps({ historyList: Array })
 const emit = defineEmits(['rollback', 'back'])
 
@@ -16,7 +18,7 @@ const formatTime = timestamp => {
   <div class="history-panel">
     <div class="panel-header">
       <button class="back-btn" @click="emit('back')" title="返回主菜单">←</button>
-      <h3>🕰️ 历史版本</h3>
+      <h3><el-icon><Clock /></el-icon> 历史版本</h3>
     </div>
 
     <div v-if="historyList.length === 0" class="empty-state">

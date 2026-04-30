@@ -1,10 +1,3 @@
-// src/composables/useAgent.js
-//
-// targetMode 说明：
-//   'insert'    → 插入当前文档（AI 自选光标插入 or 末尾追加）
-//   'overwrite' → 覆盖当前文档（同步更新标题）
-//   'new'       → 新建文档（emit create-doc，不动当前编辑器）
-
 import { ref } from 'vue'
 
 // 从环境变量读取，不要硬编码 key

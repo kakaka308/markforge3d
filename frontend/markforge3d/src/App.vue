@@ -2,6 +2,10 @@
 import { ref, provide, watch,onMounted, onBeforeUnmount } from 'vue'
 // import { watchDebounced } from '@vueuse/core'
 import { ElMessage } from 'element-plus'
+import {
+  DocumentAdd, FolderOpened, Share,
+  Download, Picture, Clock, Reading
+} from '@element-plus/icons-vue'
 
 import MarkdownEditor from './components/MarkdownEditor.vue'
 import PreviewPane from './components/PreviewPane.vue'
@@ -178,14 +182,15 @@ provide('toggleTheme',         toggleTheme)
 provide('isDark',              isDark)
 
 const menuItems = [
-  { icon: '📄', label: '新建文档',   action: handleCreateNew },
-  { icon: '💾', label: '保存文档',   action: () => { saveCurrentDoc(); ElMessage.success('文档已保存') } },
-  { icon: '🕸️', label: '知识图谱',   action: () => (showGraph.value = true) },
-  { icon: '📤', label: '导出 PDF',   action: () => exportPdf() },
-  { icon: '🖼️', label: '导出 PNG',   action: () => exportPng() },
-  { icon: '🕰️', label: '历史版本',   action: showHistoryView },
-  { icon: '📖', label: '使用教程',   action: () => openInfo('tutorial') }
+  { icon: DocumentAdd,   label: '新建文档',   action: handleCreateNew },
+  { icon: FolderOpened, label: '保存文档',   action: () => { saveCurrentDoc(); ElMessage.success('文档已保存') } },
+  { icon: Share,        label: '知识图谱',   action: () => (showGraph.value = true) },
+  { icon: Download,     label: '导出 PDF',   action: () => exportPdf() },
+  { icon: Picture,      label: '导出 PNG',   action: () => exportPng() },
+  { icon: Clock,        label: '历史版本',   action: showHistoryView },
+  { icon: Reading,      label: '使用教程',   action: () => openInfo('tutorial') }
 ]
+
 </script>
 
 <template>
@@ -210,7 +215,7 @@ const menuItems = [
         <div v-if="sidebarView === 'main'" class="sidebar-main-view">
           <ul class="sidebar-list">
             <li v-for="item in menuItems" :key="item.label" @click="item.action">
-              <span>{{ item.icon }}</span> {{ item.label }}
+              <el-icon :size="18"><component :is="item.icon" /></el-icon> {{ item.label }}
             </li>
           </ul>
           <DocList

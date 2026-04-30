@@ -1,21 +1,4 @@
 // src/composables/exportUtils.js
-//
-// 问题1修复（Three.js 导出空白）：
-//   cloneNode(true) 只复制 DOM 结构，不复制 <canvas> 像素。
-//   截图前先把所有 canvas 转成 toDataURL，在克隆节点里用 <img> 替换对应的 canvas。
-//
-// 问题2修复（Three.js 靠右边）：
-//   .canvas-box 有 min-width:900px 但无居中设置，克隆后溢出偏移。
-//   在克隆节点里对 .canvas-box 强制设置 width:100%; display:flex; justify-content:center。
-//
-// 问题3修复（文字贴边）：
-//   .scroll-container 有 padding:20px，但克隆的是内部的 .part-preview，没有这层 padding。
-//   在克隆节点上直接补 padding:30px。
-//
-// 暗色模式修复：
-//   不依赖 .force-light class（styles.scss 里没有定义），
-//   改为在克隆节点上用内联样式覆盖 CSS 变量，始终输出白底黑字。
-
 import html2canvas from 'html2canvas'
 
 const LIGHT_STYLE = `
